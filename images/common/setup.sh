@@ -4,14 +4,16 @@
 # names, space-separated), the app user, and git configuration.
 #
 # shadow (useradd and groupadd) is included because the Azure Pipelines agent
-# adds its own user inside container jobs.
+# adds its own user inside container jobs. It is optional because some musl
+# bases (Docker Hardened Images' Alpine) do not carry it, and Azure Pipelines
+# container jobs need glibc anyway.
 
 set -eu
 
 lib=$(dirname "$0")
 
 # shellcheck disable=SC2086 # OS_PACKAGES is a space-separated list
-sh "$lib/os-packages.sh" --upgrade bash ca-certificates curl git shadow ${OS_PACKAGES:-}
+sh "$lib/os-packages.sh" --upgrade bash ca-certificates curl git 'shadow?' ${OS_PACKAGES:-}
 sh "$lib/create-user.sh"
 
 # CI systems often mount a workspace owned by another uid, which git otherwise

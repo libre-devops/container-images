@@ -40,6 +40,11 @@ else
 	export UV_PYTHON_INSTALL_DIR=/opt/python UV_NO_CACHE=1
 	"$uv" python install --no-bin "$want"
 	found=$("$uv" python find --managed-python "$want")
+	# The managed CPython comes with a pip whose vendored libraries (urllib3,
+	# msgpack) lag behind their security fixes. These images install with uv,
+	# and every virtual environment that needs pip gets a current one, so
+	# remove it rather than ship known vulnerabilities.
+	"$uv" pip uninstall --quiet --python "$found" --system --break-system-packages pip
 fi
 
 for name in "python$want" python3 python; do

@@ -45,10 +45,12 @@ platforms:
   linux/arm64: ubuntu-24.04-arm
 
 # Base images, by key. Every Containerfile receives one as the BASE_IMAGE
-# build argument and needs only glibc, a POSIX shell and one of apt-get, dnf,
-# microdnf or apk, so moving to another distribution is a change to this
-# block alone. Keep each value a bare reference: `just pin` rewrites it.
+# build argument and needs only a POSIX shell and one of apt-get, dnf,
+# microdnf or apk, on glibc or musl, so moving to another distribution is a
+# change to this block alone. Keep each value a bare reference: `just pin`
+# rewrites it.
 bases:
+  alpine: dhi.io/alpine-base:3.24-alpine3.24-dev@sha256:52a1dd05ab0348e71cf244d595d9ce59268c68ac3fdd6338c18997fe035b36a7
   debian: dhi.io/debian-base:trixie-debian13-dev@sha256:61025cea33d5910165ced8b33edd3f6b6bfe161e129174887936a1b9a1442b20
   python-3.12: dhi.io/python:3.12-debian13-dev@sha256:a211f0321f6b95709f447f5bf9a88c7d92ee42c71f40ad07741e3865ae6d23bc
   python-3.13: dhi.io/python:3.13-debian13-dev@sha256:1303a6c6e9b856cfe9e1b25eaf44b4a165c28a8402140ef3b5151d9a60e4033a
@@ -59,6 +61,7 @@ bases:
 # version of each image on, so that changing distribution stays a one-line
 # edit. Nothing built on these is published.
 portability:
+  alpine: dhi.io/alpine-base:3.24-alpine3.24-dev@sha256:52a1dd05ab0348e71cf244d595d9ce59268c68ac3fdd6338c18997fe035b36a7
   rhel: registry.access.redhat.com/ubi10/ubi:10.1@sha256:15f0a6e2b448ac7aa24425c9ab541e6402dc32b782844a285ccaeffb1c938fe1
   rhel-minimal: registry.access.redhat.com/ubi10/ubi-minimal:10.2@sha256:c3fe95ec9f53a3888c47314eb4d08bde09ebde646a428137b445091afe1daf89
   wolfi: cgr.dev/chainguard/wolfi-base:latest@sha256:24f549a7fcace88e69b9557941168c74645688ecc4acf7fb6d734a6b74e9019d
@@ -122,6 +125,11 @@ ci: [uv, shellcheck, shfmt, hadolint, trivy, cosign, zizmor, actionlint]
 #   moving    Extra moving tags derived from the version: minor (1.17),
 #             major (1).
 #   aliases   Extra moving tags, literally.
+#   flavour   A variant on another base, such as alpine: every tag gets the
+#             suffix (1.17.1-alpine, 1-alpine), the latest entry of the
+#             flavour is tagged with the flavour's name (alpine), and the
+#             entry is addressed as <version>-<flavour> (just build terraform
+#             1.17.1-alpine).
 # Each image takes `description`, `contents` (the README description of one
 # entry: {version}, {python}, any tool name and any included image's name,
 # with - as _, are filled in), and optionally `tools`, `os_packages` (logical
@@ -158,6 +166,8 @@ images:
     versions:
       # renovate: datasource=github-releases depName=hashicorp/terraform extractVersion=^v(?<version>.+)$
       - { version: "1.17.1", base: debian, latest: true, moving: [minor, major] }
+      # renovate: datasource=github-releases depName=hashicorp/terraform extractVersion=^v(?<version>.+)$
+      - { version: "1.17.1", base: alpine, flavour: alpine, latest: true, moving: [minor, major] }
 
   powershell:
     description: PowerShell LTS with PSScriptAnalyzer, Pester, Az and LibreDevOpsHelpers

@@ -54,7 +54,8 @@ Five images, each a thin layer of pinned tools on a hardened base:
   [`ldo-cli`](https://github.com/libre-devops/ldo-cli). The current release, plus 2.72.0 as a
   long-lived line.
 - **`terraform`**: tenv with a default Terraform, TFLint, terraform-docs and Conftest. A
-  repository's `.terraform-version` wins over the default.
+  repository's `.terraform-version` wins over the default. Also as an Alpine variant
+  (`-alpine` tags), about a third smaller.
 - **`powershell`**: PowerShell LTS with PSScriptAnalyzer, Pester, Az and
   [LibreDevOpsHelpers](https://github.com/libre-devops/powershell-helpers).
 - **`toolbox`**: every tool above in one image, assembled from the same build stages.
@@ -63,14 +64,14 @@ What every image guarantees:
 
 | Property | How |
 | --- | --- |
-| Hardened base | [Docker Hardened Images](https://hub.docker.com/hardened-images/catalog) on Debian 13, pinned by digest |
+| Hardened base | [Docker Hardened Images](https://hub.docker.com/hardened-images/catalog) on Debian 13 (Alpine 3.24 for `-alpine` tags), pinned by digest |
 | No known fixable vulnerabilities at publication | Scanned on every pull request, at release (the exact digest pushed) and daily after; fixes are applied at the source, not excused |
 | Every input pinned | Bases by digest; downloads by version and SHA-256 per platform; Go modules through the Go checksum database; Python packages by hash |
 | Reproducible references | Date tags are never overwritten; every tag has the same digest in GHCR and Docker Hub |
 | Verifiable | cosign keyless signature, SBOM and SLSA provenance on every published digest |
 | Non-root | Runs as `app` (uid 10001) in `/work`; works rootless under Podman, and as an arbitrary uid in group 0 |
 | Multi-platform | linux/amd64 and linux/arm64, each built natively |
-| Portable | The same build runs on RHEL (UBI) and Wolfi bases, proven on every pull request |
+| Portable | The same build runs on RHEL (UBI), Wolfi and Alpine bases, proven on every pull request |
 | Current | Rebuilt every Monday, on every merge, and whenever a published image can be fixed by a rebuild |
 
 ## Quick start
@@ -100,6 +101,7 @@ cosign verify ghcr.io/libre-devops/terraform:1 \
 | One tool family in a CI job | `python`, `azure-cli`, `terraform` or `powershell` | Smaller pulls, smaller attack surface, fewer reasons to rebuild |
 | Several tool families in one job, or an interactive shell | `toolbox` | Everything together; the largest image (the Az PowerShell modules and the Azure CLI dominate its size) |
 | A specific CPython | `python:<major.minor>` | One tag per supported CPython |
+| The smallest Terraform image | `terraform:alpine` | About a third smaller than the Debian image. musl, so not for Azure Pipelines container jobs, which need glibc |
 | The Azure CLI behind TLS inspection that rejects Python 3.13's stricter checks | `azure-cli:2.72.0` | Long-lived line on Python 3.12 |
 | Your organisation's CA, mirrors or internal tools | A thin layer `FROM` a pinned digest of one of these | See [Adding an organisation's CA bundle](#adding-an-organisations-ca-bundle) |
 
@@ -111,6 +113,7 @@ cosign verify ghcr.io/libre-devops/terraform:1 \
 | Version | `python:3.12`, `azure-cli:2.72.0` | Yes, to the newest build of that version |
 | Major or major.minor | `terraform:1`, `terraform:1.17`, `python:3`, `toolbox:1` | Yes |
 | Alias | `powershell:lts` | Yes |
+| Flavour | `terraform:1.17.1-alpine`, `terraform:1-alpine`, `terraform:alpine` | As above, with the flavour as a suffix; the flavour's own name is its newest version |
 | `latest` | `python:latest` | Yes, to the newest supported version |
 
 Every release records its digests in this README and in
@@ -122,7 +125,7 @@ Every release records its digests in this README and in
 | --- | --- |
 | `python` | Every CPython release from 3.12 upwards that upstream still supports |
 | `azure-cli` | The current release, and 2.72.0 as a long-lived line for networks whose TLS inspection fails the stricter certificate checks in Python 3.13 and later |
-| `terraform` | The current Terraform 1.x as the default; any other version through `.terraform-version` |
+| `terraform` | The current Terraform 1.x as the default, on Debian and on Alpine; any other version through `.terraform-version` |
 | `powershell` | The current PowerShell LTS |
 | `toolbox` | The latest version of each of the above, with the Azure CLI's Python |
 
@@ -303,7 +306,7 @@ flowchart LR
   subgraph pr["Every pull request"]
     check["Validate pins, lint, zizmor, actionlint, Trivy repository scan"] --> build["Build every version, amd64 and arm64"]
     build --> test["Smoke tests"] --> gate["Trivy gate"]
-    check --> port["Build on UBI and Wolfi bases"]
+    check --> port["Build on UBI, Wolfi and Alpine bases"]
   end
   subgraph release["Release: merges, Mondays, on demand"]
     push["Build once per platform, push by digest"] --> verify["Smoke test and scan that digest"]
@@ -387,7 +390,9 @@ To report a vulnerability, see [SECURITY.md](./SECURITY.md).
 The published images build on Docker Hardened Images, but nothing in the build depends on
 that. A base needs only:
 
-- glibc (the tools are glibc builds; PowerShell has no musl build for arm64),
+- glibc or musl. On musl (Alpine), uv and PowerShell use their musl builds and everything
+  else is a static binary, so every image builds, with one exception: Microsoft publishes no
+  musl build of PowerShell for arm64, so `powershell` and `toolbox` are amd64 only on musl,
 - a POSIX shell at `/bin/sh`,
 - one of `apt-get`, `dnf`, `microdnf` or `apk`.
 
@@ -395,6 +400,8 @@ Every image is a target in one multi-stage [`images/Containerfile`](./images/Con
 Package installs go through `images/common/os-packages.sh`, which maps logical names to each
 package manager's; the user is created by writing the account files directly; tools are pinned
 downloads or built from source; and if the base lacks the requested CPython, uv installs it.
+The CPython uv installs comes without the pip it bundles, whose vendored libraries lag behind
+their security fixes: use `uv pip`, and virtual environments get a current pip of their own.
 
 To build on another base locally, name a key from `versions.yml` or give a full reference:
 
@@ -404,8 +411,10 @@ just build python 3.13 registry.access.redhat.com/ubi10/ubi:10.1@sha256:<digest>
 ```
 
 To publish on another base, change the entries under `bases` in `versions.yml` and run
-`just pin`. The portability bases (UBI 10, UBI 10 minimal, Wolfi) are built and smoke tested
-on every pull request, so that edit stays safe. If a hardened variant you need does not exist,
+`just pin`. To publish an extra variant on another base, as the `-alpine` tags are, add a
+version line with a `flavour` (see `versions.yml`). The portability bases (UBI 10, UBI 10
+minimal, Wolfi and Docker Hardened Images Alpine) are built and smoke tested on every pull
+request, so either edit stays safe. If a hardened variant you need does not exist,
 `docker.io/library/debian:13-slim`, pinned by digest, is a drop-in fallback.
 
 ## Troubleshooting
@@ -418,6 +427,7 @@ on every pull request, so that edit stays safe. If a hardened variant you need d
 | A `.terraform-version` fails to install in a network without internet access | tenv downloads it from HashiCorp | Use the default Terraform with `TENV_AUTO_INSTALL=false`, or point tenv at an internal mirror |
 | `toomanyrequests` pulling from Docker Hub | Docker Hub's anonymous pull limits | Pull the same digest from `ghcr.io/libre-devops` |
 | A container job in Azure Pipelines fails before the first step | The agent could not add its user | Start the container as root: `options: --user 0:0` |
+| An `-alpine` image fails as an Azure Pipelines container job | The agent's Node.js needs glibc, and Alpine uses musl | Use the Debian tags (the ones without `-alpine`) |
 | `Import-Module Az` is slow | Az loads every service module | Import only what you use, for example `Import-Module Az.Accounts, Az.Resources` |
 
 ## Developing
@@ -427,7 +437,7 @@ You need Docker or Podman, [just](https://just.systems) and [uv](https://docs.as
 
 | Recipe | Does |
 | --- | --- |
-| `just build <image> [version] [base]` | Build for this machine, with CI's build arguments |
+| `just build <image> [version] [base]` | Build for this machine, with CI's build arguments (a flavour is a version: `just build terraform 1.17.1-alpine`) |
 | `just test <image> [version] [base]` | Build, then run the smoke tests |
 | `just scan <image> [version] [base]` | Build, then scan with the release gate |
 | `just docs` / `just docs-check` | Write README.md, or fail if it is out of date |

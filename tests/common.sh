@@ -42,5 +42,15 @@ ok "TLS works against the image's CA bundle (curl and git)"
 
 command -v update-ca-certificates >/dev/null || command -v update-ca-trust >/dev/null ||
 	fail "neither update-ca-certificates nor update-ca-trust is available for adding a CA"
-command -v useradd >/dev/null || fail "useradd is missing (Azure Pipelines container jobs need it)"
-ok "CA tooling and useradd are present"
+ok "CA tooling is present"
+
+musl=false
+for loader in /lib/ld-musl-*.so.1; do
+	[ -e "$loader" ] && musl=true
+done
+if $musl; then
+	ok "musl base: useradd is not required (Azure Pipelines container jobs need glibc)"
+else
+	command -v useradd >/dev/null || fail "useradd is missing (Azure Pipelines container jobs need it)"
+	ok "useradd is present for Azure Pipelines container jobs"
+fi

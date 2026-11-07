@@ -7,8 +7,10 @@
 # Usage: fetch-tool.sh <root> <tool> <spec>
 #
 # <spec> comes from versions.lock.json, through scripts/images.py: one or more
-# space-separated "<arch>|<url>|<sha256>" items, where <arch> is amd64, arm64
-# or any. The item for this machine's architecture is used. A download whose
+# space-separated "<platform>|<url>|<sha256>" items, where <platform> is
+# amd64, arm64, amd64-musl, arm64-musl or any. On a musl base (Alpine), a tool
+# that ships separate musl builds must have one for this architecture; a tool
+# with a single build (a static binary) uses it everywhere. A download whose
 # SHA-256 does not match the pin fails the build.
 
 set -eu
@@ -29,19 +31,37 @@ aarch64 | arm64) arch=arm64 ;;
 *) die "unsupported architecture: $(uname -m)" ;;
 esac
 
+libc=gnu
+for loader in /lib/ld-musl-*.so.1; do
+	[ -e "$loader" ] && libc=musl
+done
+
+# pick <platform>: the url and sha of the item for that platform, if any.
+pick() {
+	for item in $spec; do
+		case $item in
+		"$1|"*)
+			rest=${item#*|}
+			url=${rest%|*}
+			sha=${rest##*|}
+			return 0
+			;;
+		esac
+	done
+	return 1
+}
+
 url=
 sha=
-for item in $spec; do
-	case $item in
-	"$arch|"* | "any|"*)
-		rest=${item#*|}
-		url=${rest%|*}
-		sha=${rest##*|}
-		break
-		;;
-	esac
-done
-[ -n "$url" ] || die "no $arch download is pinned for $tool"
+case " $spec" in
+*" "*-musl\|*) has_musl_builds=true ;;
+*) has_musl_builds=false ;;
+esac
+if [ "$libc" = musl ] && $has_musl_builds; then
+	pick "$arch-musl" || die "$tool has no musl build for $arch, so it cannot run on this base"
+else
+	pick "$arch" || pick any || die "no $arch download is pinned for $tool"
+fi
 case $sha in
 "" | *[!0-9a-f]*) die "the pinned SHA-256 for $tool is not hex: '$sha'" ;;
 esac

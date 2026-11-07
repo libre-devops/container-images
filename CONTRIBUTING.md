@@ -20,8 +20,8 @@ just scan <image> [version]
 ```
 
 The Build workflow runs the same checks, then builds every image version for linux/amd64 and
-linux/arm64, plus the latest version of each on the portability bases (UBI 10, UBI 10 minimal
-and Wolfi).
+linux/arm64, plus the latest version of each on the portability bases (UBI 10, UBI 10 minimal,
+Wolfi and Docker Hardened Images Alpine).
 
 ## Changing versions
 

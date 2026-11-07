@@ -73,13 +73,31 @@ GENERATED = "<!-- Generated from HEADER.md and versions.yml by `just docs`. Edit
 OSV = "https://api.osv.dev/v1"
 
 # Release downloads: GitHub repository, tag pattern, asset pattern, and the
-# name each architecture has in the asset ("any": one asset for all). The Go
-# toolchain comes from go.dev instead (see pin_go_toolchain).
+# name each platform has in the asset. Platforms are amd64 and arm64 (glibc,
+# or static builds that run anywhere), "<arch>-musl" where a tool ships a
+# separate build for musl bases such as Alpine, and "any" for one asset for
+# all. The Go toolchain comes from go.dev instead (see pin_go_toolchain).
 DOWNLOADS: dict[str, tuple[str, str, str, dict[str, str]]] = {
     "shellcheck": ("koalaman/shellcheck", "v{v}", "shellcheck-v{v}.linux.{a}.tar.xz", {"amd64": "x86_64", "arm64": "aarch64"}),
     "jq": ("jqlang/jq", "jq-{v}", "jq-linux-{a}", {"amd64": "amd64", "arm64": "arm64"}),
-    "uv": ("astral-sh/uv", "{v}", "uv-{a}-unknown-linux-gnu.tar.gz", {"amd64": "x86_64", "arm64": "aarch64"}),
-    "powershell": ("PowerShell/PowerShell", "v{v}", "powershell-{v}-linux-{a}.tar.gz", {"amd64": "x64", "arm64": "arm64"}),
+    "uv": (
+        "astral-sh/uv",
+        "{v}",
+        "uv-{a}.tar.gz",
+        {
+            "amd64": "x86_64-unknown-linux-gnu",
+            "arm64": "aarch64-unknown-linux-gnu",
+            "amd64-musl": "x86_64-unknown-linux-musl",
+            "arm64-musl": "aarch64-unknown-linux-musl",
+        },
+    ),
+    # Microsoft publishes no musl build of PowerShell for arm64.
+    "powershell": (
+        "PowerShell/PowerShell",
+        "v{v}",
+        "powershell-{v}-{a}.tar.gz",
+        {"amd64": "linux-x64", "arm64": "linux-arm64", "amd64-musl": "linux-musl-x64"},
+    ),
     "ldo-cli": ("libre-devops/ldo-cli", "v{v}", "libre_devops_helpers-{v}-py3-none-any.whl", {"any": ""}),
     # CI only.
     "shfmt": ("mvdan/sh", "v{v}", "shfmt_v{v}_linux_{a}", {"amd64": "amd64", "arm64": "arm64"}),
@@ -146,15 +164,22 @@ class Entry:
     latest: bool
     moving: tuple[str, ...]
     aliases: tuple[str, ...]
+    flavour: str | None = None
+
+    @property
+    def key(self) -> str:
+        """What identifies the entry within its image: 1.17.1, or 1.17.1-alpine."""
+        return f"{self.version}-{self.flavour}" if self.flavour else self.version
 
     @property
     def id(self) -> str:
-        return f"{self.image}-{self.version}"
+        return f"{self.image}-{self.key}"
 
     @property
     def stem(self) -> str:
-        """The front of the date tag: 3.12, or 2.72.0-py3.12."""
-        return f"{self.version}-py{self.python}" if self.python else self.version
+        """The front of the date tag: 3.12, 2.72.0-py3.12, or 1.17.1-alpine."""
+        stem = f"{self.version}-py{self.python}" if self.python else self.version
+        return f"{stem}-{self.flavour}" if self.flavour else stem
 
     def date_tag(self, date: str) -> str:
         return f"{self.stem}-{date}"
@@ -168,7 +193,10 @@ class Entry:
             elif kind == "major" and len(parts) > 1:
                 tags.append(parts[0])
         tags.extend(self.aliases)
-        if self.latest:
+        if self.flavour:
+            # Every tag of a flavour carries its suffix; its newest is the flavour itself.
+            tags = [f"{t}-{self.flavour}" for t in tags] + ([self.flavour] if self.latest else [])
+        elif self.latest:
             tags.append("latest")
         return list(dict.fromkeys(tags))
 
@@ -206,6 +234,7 @@ class Config:
                         latest=bool(item.get("latest")),
                         moving=tuple(item.get("moving") or ()),
                         aliases=tuple(item.get("aliases") or ()),
+                        flavour=item.get("flavour"),
                     )
                 )
         if image and not out:
@@ -213,13 +242,15 @@ class Config:
         return out
 
     def entry(self, image: str, version: str | None = None) -> Entry:
+        """An image version by its key (1.17.1, or 1.17.1-alpine for a flavour);
+        with no key, the latest version of the default flavour."""
         entries = self.entries(image)
         if not version:
-            return next(e for e in entries if e.latest)
+            return next(e for e in entries if e.latest and not e.flavour)
         for e in entries:
-            if e.version == version:
+            if e.key == version:
                 return e
-        known = ", ".join(e.version for e in entries)
+        known = ", ".join(e.key for e in entries)
         raise Failure(f"{image} has no version '{version}' (versions.yml has: {known})")
 
     def components(self, entry: Entry) -> list[Entry]:
@@ -687,10 +718,19 @@ def cmd_lock(cfg: Config, check: bool) -> None:
     token = github_token()
     tools: dict[str, dict] = {}
     for tool, version in sorted(needed):
-        existing = lock["tools"].get(tool, {}).get(version) if pinned(tool, version) else None
-        if not existing:
+        existing = lock["tools"].get(tool, {}).get(version) or {}
+        if not pinned(tool, version):
             note(f"pinning {tool} {version}")
-            existing = pin_download(tool, version, token)
+            fresh = pin_download(tool, version, token)
+            # A platform pinned before must still match: if upstream replaced
+            # the asset since, fail rather than quietly trust the new one.
+            for arch, old in existing.items():
+                if arch in fresh and fresh[arch]["sha256"] != old["sha256"]:
+                    raise Failure(
+                        f"{tool} {version} {arch} changed upstream since it was pinned: "
+                        f"{old['sha256']} is now {fresh[arch]['sha256']}"
+                    )
+            existing = {**fresh, **existing}
         tools.setdefault(tool, {})[version] = existing
 
     go_version = cfg.tools["go"]
@@ -967,7 +1007,9 @@ def dockerhub_overview(cfg: Config, image: str) -> str:
     repos = cfg.repos(image)
     hub_repo = next(r for r in repos if r.startswith("docker.io/"))
     rows = "\n".join(
-        f"| {' '.join(f'`{t}`' for t in e.moving_tags())} | {contents(cfg, e)} |" for e in entries
+        f"| {' '.join(f'`{t}`' for t in e.moving_tags())} | {contents(cfg, e)}"
+        f"{' (' + e.flavour.capitalize() + ')' if e.flavour else ''} |"
+        for e in entries
     )
     return f"""# {hub_repo.removeprefix('docker.io/')}
 
@@ -1085,9 +1127,14 @@ def cmd_validate(cfg: Config) -> None:
         if not re.search(rf"^FROM \S+ AS {re.escape(name)}$", (ROOT / CONTAINERFILE).read_text(), flags=re.M):
             problems.append(f"image '{name}' has no `AS {name}` stage in {CONTAINERFILE}")
         entries = [e for e in cfg.entries() if e.image == name]
-        latest = [e.version for e in entries if e.latest]
-        if len(latest) != 1:
-            problems.append(f"image '{name}' needs exactly one latest entry, has {len(latest)}")
+        for flavour in sorted({e.flavour or "" for e in entries}):
+            latest = [e.key for e in entries if e.latest and (e.flavour or "") == flavour]
+            label = f"{name} ({flavour})" if flavour else name
+            if len(latest) != 1:
+                problems.append(f"image '{label}' needs exactly one latest entry, has {len(latest)}")
+        keys = [e.key for e in entries]
+        for key in sorted({k for k in keys if keys.count(k) > 1}):
+            problems.append(f"image '{name}' lists {key} twice")
         seen: dict[str, str] = {}
         for raw in spec["versions"]:
             for field in ("version", "python"):
@@ -1101,8 +1148,8 @@ def cmd_validate(cfg: Config) -> None:
                     problems.append(f"{e.id}: moving takes minor or major, not '{kind}'")
             for tag in e.moving_tags():
                 if tag in seen:
-                    problems.append(f"{name}: tag '{tag}' is claimed by {seen[tag]} and {e.version}")
-                seen[tag] = e.version
+                    problems.append(f"{name}: tag '{tag}' is claimed by {seen[tag]} and {e.key}")
+                seen[tag] = e.key
     for section, refs in (("bases", cfg.bases), ("portability", cfg.portability)):
         for key, ref in refs.items():
             if not DIGEST.search(ref):
@@ -1182,19 +1229,19 @@ def as_lines(values: dict[str, str]) -> str:
 
 def local_ref(entry: Entry, base: str | None) -> str:
     suffix = f"-{re.sub(r'[^a-z0-9.]+', '-', base.lower()).strip('-')}" if base else ""
-    return f"localhost/libre-devops/{entry.image}:{entry.version}{suffix}"[:200]
+    return f"localhost/libre-devops/{entry.image}:{entry.key}{suffix}"[:200]
 
 
 def cmd_matrix(cfg: Config, github_output: bool) -> None:
     builds, entries, portability = [], [], []
     for e in cfg.entries():
-        entries.append({"id": e.id, "image": e.image, "version": e.version})
+        entries.append({"id": e.id, "image": e.image, "version": e.key})
         for platform, runner in cfg.platforms.items():
             builds.append(
                 {
                     "id": e.id,
                     "image": e.image,
-                    "version": e.version,
+                    "version": e.key,
                     "platform": platform,
                     "arch": platform.split("/", 1)[1],
                     "runner": runner,
@@ -1206,7 +1253,7 @@ def cmd_matrix(cfg: Config, github_output: bool) -> None:
                     "labels": as_lines(labels(cfg, e)),
                 }
             )
-    for e in (e for e in cfg.entries() if e.latest):
+    for e in (e for e in cfg.entries() if e.latest and not e.flavour):
         for name in cfg.portability:
             portability.append(
                 {
@@ -1261,7 +1308,7 @@ def images_table(cfg: Config) -> str:
     for e in cfg.entries():
         tags = " ".join(f"`{t}`" for t in e.moving_tags()) + f"<br>`{e.stem}-YYYYMMDD`"
         base = f"`{e.base.split('@', 1)[0]}`"
-        pull = "<br>".join(f"`{repo}:{e.version}`" for repo in cfg.repos(e.image))
+        pull = "<br>".join(f"`{repo}:{e.key}`" for repo in cfg.repos(e.image))
         rows.append(f"| `{e.image}` | {tags} | {base} | {contents(cfg, e)} | {pull} |")
     common = ", ".join(f"{DISPLAY.get(t, t)} {cfg.tools[t]}" for t in cfg.common)
     platforms = " and ".join(cfg.platforms)
@@ -1277,10 +1324,10 @@ def digests_table(cfg: Config) -> str:
     releases = load_releases()
     rows = []
     for e in cfg.entries():
-        record = releases.get(e.image, {}).get(e.version)
+        record = releases.get(e.image, {}).get(e.key)
         if record:
             rows.append(
-                f"| `{e.image}` | `{e.version}` | `{record['date_tag']}` | `{record['digest']}` | {record['released']} |"
+                f"| `{e.image}` | `{e.key}` | `{record['date_tag']}` | `{record['digest']}` | {record['released']} |"
             )
     if not rows:
         return "_No release has been published yet. This table fills in after the first release._"
@@ -1316,7 +1363,7 @@ def cmd_record(cfg: Config, directory: str) -> None:
         releases.setdefault(record["image"], {})[record["version"]] = {
             key: record[key] for key in ("date_tag", "digest", "released")
         }
-    current = {(e.image, e.version) for e in cfg.entries()}
+    current = {(e.image, e.key) for e in cfg.entries()}
     pruned = {
         image: dict(sorted((v, r) for v, r in versions.items() if (image, v) in current))
         for image, versions in sorted(releases.items())

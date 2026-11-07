@@ -7,6 +7,8 @@
 #
 #   --upgrade   Upgrade every installed package first, so that a scheduled
 #               rebuild picks up the distribution's security fixes.
+#   <name>?     A trailing ? marks a package as optional: if the base's
+#               repositories do not carry it, the build carries on without it.
 #
 # Each logical name maps to candidate package names for the detected package
 # manager, tried in order (libssl3t64 before libssl3, for example), so that a
@@ -95,6 +97,13 @@ if $upgrade; then
 fi
 
 for name in "$@"; do
+	optional=false
+	case $name in
+	*\?)
+		optional=true
+		name=${name%?}
+		;;
+	esac
 	# A tool the base already provides is good enough (and --upgrade keeps it
 	# current): RHEL's curl-minimal conflicts with the full curl package, and
 	# Wolfi's tar and gzip are busybox, with no separate package.
@@ -115,6 +124,10 @@ for name in "$@"; do
 			break
 		fi
 	done
+	if [ -z "$installed" ] && $optional; then
+		echo "os-packages: optional $name is not available from this base's repositories; carrying on without it"
+		continue
+	fi
 	if [ -z "$installed" ]; then
 		cat "$log" >&2
 		die "could not install '$name' with $pm (tried: $list)"

@@ -155,6 +155,10 @@
           "sha256": "1da6d6d6035d651f20e70ddee7c4c15ac6ab8b9fb40ee92240d91263f28a884b",
           "url": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.9/powershell-7.6.9-linux-x64.tar.gz"
         },
+        "amd64-musl": {
+          "sha256": "f83df6705edaae07db970dcc6c34ad6583d33a2f6199f1b55cdc5354fbb9001c",
+          "url": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.9/powershell-7.6.9-linux-musl-x64.tar.gz"
+        },
         "arm64": {
           "sha256": "02eb9991af447c7e7fe881acde195961afd397c40b8eb1c2b3856b84ec2d85f2",
           "url": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.9/powershell-7.6.9-linux-arm64.tar.gz"
@@ -203,9 +207,17 @@
           "sha256": "c5221ff41b7892bfc223543883600125f6a47fe845093e0f5bdff4f359196d83",
           "url": "https://github.com/astral-sh/uv/releases/download/0.13.7/uv-x86_64-unknown-linux-gnu.tar.gz"
         },
+        "amd64-musl": {
+          "sha256": "287491da03f2a785c70fa75b13e1f849918c2f2b5415fe84876b8214eeb792f9",
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.7/uv-x86_64-unknown-linux-musl.tar.gz"
+        },
         "arm64": {
           "sha256": "71279f8d3c67241e807b9d8db872d1bf541579fb9f08b7d1eb1682196d1e57dc",
           "url": "https://github.com/astral-sh/uv/releases/download/0.13.7/uv-aarch64-unknown-linux-gnu.tar.gz"
+        },
+        "arm64-musl": {
+          "sha256": "2d3ec076a0c4c0e8250bb6418c44080828b544f1a3be0b6e46adf9fb6923de45",
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.7/uv-aarch64-unknown-linux-musl.tar.gz"
         }
       }
     },
