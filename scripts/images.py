@@ -1132,6 +1132,9 @@ def cmd_validate(cfg: Config) -> None:
             label = f"{name} ({flavour})" if flavour else name
             if len(latest) != 1:
                 problems.append(f"image '{label}' needs exactly one latest entry, has {len(latest)}")
+        for e in entries:
+            if "_" in e.id:
+                problems.append(f"{e.id}: ids must not contain _, which separates them from the platform in CI artifact names")
         keys = [e.key for e in entries]
         for key in sorted({k for k in keys if keys.count(k) > 1}):
             problems.append(f"image '{name}' lists {key} twice")
