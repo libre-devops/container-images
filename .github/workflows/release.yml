@@ -1,0 +1,260 @@
+name: Release
+
+# Builds every image version once per platform on native runners and pushes
+# each by digest (untagged) to every registry, with an SBOM and provenance.
+# Smoke tests and scans that exact digest. Then, per image version, joins the
+# platforms into one manifest, tags it in GHCR and Docker Hub from the same
+# digest, checks the registries agree, signs it in both with cosign keyless
+# signing, and finally opens a pull request with the new README tables.
+#
+# Date tags are never overwritten (see scripts/publish.sh); version, alias and
+# latest tags move.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - releases.json
+      - LICENSE
+      - renovate.json
+      - .github/workflows/build.yml
+      - .github/workflows/pins.yml
+      - .github/workflows/scan.yml
+  schedule:
+    - cron: "0 3 * * 1" # Mondays at 03:00 UTC
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      builds: ${{ steps.matrix.outputs.builds }}
+      entries: ${{ steps.matrix.outputs.entries }}
+      date: ${{ steps.matrix.outputs.date }}
+      created: ${{ steps.matrix.outputs.created }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned tools
+        run: scripts/ci-tools.sh uv
+      - name: Validate versions.yml, the lock and the base pins
+        run: uv run scripts/images.py validate
+      - name: Make sure every Docker Hub repository exists, is public and has its overview
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: uv run scripts/images.py dockerhub
+      - name: Build the matrices
+        id: matrix
+        run: |
+          uv run scripts/images.py matrix --github-output >/dev/null
+          echo "date=$(date -u +%Y%m%d)" >>"$GITHUB_OUTPUT"
+          echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >>"$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.id }} ${{ matrix.arch }}
+    needs: prepare
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.builds) }}
+    env:
+      IMAGE: ${{ matrix.image }}
+      VERSION: ${{ matrix.version }}
+      ID: ${{ matrix.id }}
+      ARCH: ${{ matrix.arch }}
+      PRIMARY: ${{ matrix.primary_repo }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned tools
+        run: scripts/ci-tools.sh uv trivy
+      - name: Log in to dhi.io
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: dhi.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Log in to GHCR
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to Docker Hub
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ${{ matrix.containerfile }}
+          target: ${{ matrix.target }}
+          platforms: ${{ matrix.platform }}
+          build-args: ${{ matrix.build_args }}
+          labels: |
+            ${{ matrix.labels }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ needs.prepare.outputs.created }}
+          outputs: type=image,"name=${{ matrix.repos }}",push-by-digest=true,name-canonical=true,push=true
+          provenance: mode=max
+          sbom: true
+          # Never reuse cached layers in a release, so that the OS package
+          # upgrade in every image runs afresh each week.
+          no-cache: true
+          cache-to: type=gha,mode=max,scope=${{ matrix.id }}-${{ matrix.arch }}
+      - name: Smoke test the pushed digest
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: tests/run.sh "$IMAGE" "$PRIMARY@$DIGEST" "$VERSION"
+      - name: Scan the pushed digest
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: scripts/scan.sh "$PRIMARY@$DIGEST" "$IMAGE" "$VERSION"
+      - name: Record the digest
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          mkdir -p digests
+          echo "$DIGEST" >"digests/$ID-$ARCH"
+      - name: Upload the digest
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: digest-${{ matrix.id }}-${{ matrix.arch }}
+          path: digests/
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Publish ${{ matrix.id }}
+    needs: [prepare, build]
+    # One image version's failure must not stop the others publishing;
+    # scripts/publish.sh refuses an entry whose platform builds did not all
+    # pass.
+    if: ${{ !cancelled() && needs.prepare.result == 'success' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.entries) }}
+    env:
+      IMAGE: ${{ matrix.image }}
+      VERSION: ${{ matrix.version }}
+      DATE: ${{ needs.prepare.outputs.date }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned tools
+        run: scripts/ci-tools.sh uv cosign
+      - name: Download the platform digests
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        continue-on-error: true
+        with:
+          pattern: digest-${{ matrix.id }}-*
+          path: digests
+          merge-multiple: true
+      - name: Log in to GHCR
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to Docker Hub
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Tag, check and sign in every registry
+        run: scripts/publish.sh "$IMAGE" "$VERSION" "$DATE" digests
+      - name: Upload the release record
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-${{ matrix.id }}
+          path: release/
+          if-no-files-found: error
+          retention-days: 7
+
+  docs:
+    name: Update the README tables
+    needs: [prepare, publish]
+    if: ${{ !cancelled() && needs.prepare.result == 'success' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned tools
+        run: scripts/ci-tools.sh uv
+      - name: Download the release records
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        continue-on-error: true
+        with:
+          pattern: release-*
+          path: release
+          merge-multiple: true
+      - name: Record the releases and regenerate README.md
+        id: records
+        run: |
+          if ! ls release/*.json >/dev/null 2>&1; then
+            echo "No image version was published."
+            exit 0
+          fi
+          uv run scripts/images.py record release
+          uv run scripts/images.py docs
+          echo "found=true" >>"$GITHUB_OUTPUT"
+      - name: Open or update the pull request
+        id: pr
+        if: steps.records.outputs.found == 'true'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          branch: release/readme-tables
+          delete-branch: true
+          add-paths: |
+            README.md
+            releases.json
+          commit-message: "docs: record the digests of the latest release"
+          title: "docs: record the digests of the latest release"
+          body: |
+            The Release workflow published new digests. This updates `releases.json` and the
+            README tables that list them.
+      - name: Start Build on the pull request
+        if: steps.pr.outputs.pull-request-operation == 'created' || steps.pr.outputs.pull-request-operation == 'updated'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run build.yml --repo "$GITHUB_REPOSITORY" --ref release/readme-tables

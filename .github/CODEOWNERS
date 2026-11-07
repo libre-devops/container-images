@@ -1,0 +1,5 @@
+# Every change is reviewed by a maintainer; workflows, pins and VEX statements most of all.
+*                     @craigthackerx
+/.github/workflows/   @craigthackerx
+/versions.yml         @craigthackerx
+/vex/                 @craigthackerx

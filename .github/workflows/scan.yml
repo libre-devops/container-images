@@ -1,0 +1,94 @@
+name: Scan
+
+# Every day, scans every published image for vulnerabilities disclosed since
+# it was built, and reports every finding in the repository's Security tab
+# (code scanning), so nothing waits for the weekly release to be noticed.
+#
+# If a published image now fails the gate, starts the Release workflow. Its
+# rebuild picks up every fix that exists: upgraded OS packages, and whatever
+# the daily Pins refresh has merged into main. A finding with no fix yet
+# fails that release's gate and stays visible here until one exists.
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # Every day at 06:00 UTC, after the 02:00 Pins refresh
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: scan
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      entries: ${{ steps.matrix.outputs.entries }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned tools
+        run: scripts/ci-tools.sh uv
+      - name: Build the matrices
+        id: matrix
+        run: uv run scripts/images.py matrix --github-output >/dev/null
+
+  scan:
+    name: Scan ${{ matrix.id }}
+    needs: prepare
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.entries) }}
+    env:
+      IMAGE: ${{ matrix.image }}
+      VERSION: ${{ matrix.version }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned tools
+        run: scripts/ci-tools.sh uv trivy
+      - name: Scan the published image
+        id: scan
+        run: |
+          repo=$(uv run scripts/images.py repos "$IMAGE" | head -n 1)
+          ref="$repo:$VERSION"
+          if ! docker buildx imagetools inspect "$ref" >/dev/null 2>&1; then
+            echo "$ref is not published yet."
+            exit 0
+          fi
+          echo "published=true" >>"$GITHUB_OUTPUT"
+          status=0
+          SCAN_REPORT=report.json scripts/scan.sh "$ref" "$IMAGE" "$VERSION" || status=$?
+          trivy convert --quiet --format sarif --output trivy.sarif report.json
+          exit "$status"
+      - name: Report to code scanning
+        if: ${{ always() && steps.scan.outputs.published == 'true' }}
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          sarif_file: trivy.sarif
+          category: image-${{ matrix.id }}
+
+  rebuild:
+    name: Rebuild to pick up fixes
+    needs: scan
+    if: ${{ always() && needs.scan.result == 'failure' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+    steps:
+      - name: Start the Release workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref main

@@ -1,0 +1,152 @@
+name: Build
+
+# Pull requests: validate the pins, lint, then build every image version for
+# every platform on native runners, smoke test it and scan it. The latest
+# version of each image is also built and smoke tested on the portability
+# bases (RHEL and Wolfi), so that changing distribution stays a one-line
+# change. Nothing is pushed.
+#
+# Also started by the Pins workflow (workflow_dispatch) after it pushes
+# regenerated pins to a branch, because a push made with GITHUB_TOKEN does not
+# trigger workflows by itself.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      builds: ${{ steps.matrix.outputs.builds }}
+      portability: ${{ steps.matrix.outputs.portability }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned tools
+        run: scripts/ci-tools.sh uv hadolint shellcheck shfmt actionlint zizmor trivy
+      - name: Validate versions.yml, the lock and the base pins
+        run: uv run scripts/images.py validate
+      - name: Check README.md is current
+        run: uv run scripts/images.py docs --check
+      - name: Lint, and scan the repository and workflows for security problems
+        run: scripts/lint.sh
+      - name: Build the matrices
+        id: matrix
+        run: uv run scripts/images.py matrix --github-output >/dev/null
+
+  build:
+    name: Build ${{ matrix.id }} ${{ matrix.arch }}
+    needs: check
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.check.outputs.builds) }}
+    env:
+      IMAGE: ${{ matrix.image }}
+      VERSION: ${{ matrix.version }}
+      REF: localhost/libre-devops/${{ matrix.image }}:${{ matrix.version }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned tools
+        run: scripts/ci-tools.sh uv trivy
+      - name: Log in to dhi.io
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: dhi.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ${{ matrix.containerfile }}
+          target: ${{ matrix.target }}
+          platforms: ${{ matrix.platform }}
+          build-args: ${{ matrix.build_args }}
+          labels: ${{ matrix.labels }}
+          tags: ${{ env.REF }}
+          load: true
+          provenance: false
+          sbom: false
+          cache-from: type=gha,scope=${{ matrix.id }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.id }}-${{ matrix.arch }}
+      - name: Smoke test
+        run: tests/run.sh "$IMAGE" "$REF" "$VERSION"
+      - name: Scan
+        run: scripts/scan.sh "$REF" "$IMAGE" "$VERSION"
+
+  portability:
+    name: Portability ${{ matrix.id }}
+    needs: check
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.check.outputs.portability) }}
+    env:
+      IMAGE: ${{ matrix.image }}
+      VERSION: ${{ matrix.version }}
+      BASE_NAME: ${{ matrix.base_name }}
+      REF: localhost/libre-devops/${{ matrix.image }}:${{ matrix.version }}-${{ matrix.base_name }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned tools
+        run: scripts/ci-tools.sh uv trivy
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ${{ matrix.containerfile }}
+          target: ${{ matrix.target }}
+          platforms: ${{ matrix.platform }}
+          build-args: ${{ matrix.build_args }}
+          tags: ${{ env.REF }}
+          load: true
+          provenance: false
+          sbom: false
+      - name: Smoke test
+        run: tests/run.sh "$IMAGE" "$REF" "$VERSION"
+      - name: Scan (informational, not a gate for portability bases)
+        run: scripts/scan.sh "$REF" "$IMAGE" "$VERSION" "$BASE_NAME" || echo "::warning::$IMAGE $VERSION does not pass the scan gate on the $BASE_NAME base"
+
+  # One stable check name to require in branch protection.
+  result:
+    name: Build result
+    needs: [check, build, portability]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    permissions: {}
+    steps:
+      - name: Fail if any job failed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Results: $RESULTS"
+          for result in $RESULTS; do
+            [ "$result" = success ] || exit 1
+          done

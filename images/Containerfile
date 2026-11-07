@@ -1,0 +1,151 @@
+# Libre DevOps container images: one multi-stage build, one target per image.
+#
+#   docker build -f images/Containerfile --target <image> --build-arg ... .
+#
+# scripts/images.py computes every build argument from versions.yml and
+# versions.lock.json, and `just build <image>` passes them for you. BASE_IMAGE
+# can be any glibc base with a POSIX shell and apt-get, dnf, microdnf or apk;
+# nothing below names a package manager or depends on the distribution.
+#
+# Stages (a target builds only the stages it needs):
+#   fetch       Pinned release downloads, each checked against its SHA-256.
+#   go          Go tools built from their pinned module source (verified by the
+#               Go checksum database) with the pinned Go toolchain, after
+#               raising every dependency with a known vulnerability to its fixed
+#               version.
+#   base        The base image, upgraded, with the shared packages, the app
+#               user and the tools every image has.
+#   python, azure-cli, terraform, powershell
+#               The images, each on base.
+#   toolbox     Everything, assembled from the stages above.
+
+ARG BASE_IMAGE
+
+FROM ${BASE_IMAGE} AS fetch
+# A build stage only: nothing from it runs as root in an image.
+# hadolint ignore=DL3002
+USER 0
+ARG SHELLCHECK_ASSET
+ARG JQ_ASSET
+ARG UV_ASSET=""
+ARG LDO_CLI_ASSET=""
+ARG POWERSHELL_ASSET=""
+RUN --mount=type=bind,source=images,target=/src \
+    sh /src/common/os-packages.sh ca-certificates curl tar gzip xz \
+    && sh /src/common/fetch-all.sh /fetched
+
+FROM ${BASE_IMAGE} AS go
+# hadolint ignore=DL3002
+USER 0
+ARG GO_ASSET
+ARG SHFMT_GO
+ARG TENV_GO=""
+ARG TFLINT_GO=""
+ARG TERRAFORM_DOCS_GO=""
+ARG CONFTEST_GO=""
+RUN --mount=type=bind,source=images,target=/src \
+    --mount=type=cache,target=/root/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    sh /src/common/os-packages.sh ca-certificates curl tar gzip git \
+    && sh /src/common/fetch-tool.sh / go "${GO_ASSET}" \
+    && sh /src/common/go-build-all.sh /built
+
+FROM ${BASE_IMAGE} AS base
+# hadolint ignore=DL3002
+USER 0
+ARG OS_PACKAGES=""
+RUN --mount=type=bind,source=images,target=/src \
+    sh /src/common/setup.sh
+COPY --from=fetch /fetched/common/ /
+COPY --from=go /built/shfmt/ /
+
+FROM base AS python
+ARG PYTHON_MINOR
+COPY --from=fetch /fetched/uv/ /
+RUN --mount=type=bind,source=images,target=/src \
+    sh /src/common/ensure-python.sh "${PYTHON_MINOR}" /usr/local/bin/uv \
+    && sh /src/common/finalise.sh
+ENV HOME=/home/app \
+    PYTHONUNBUFFERED=1
+USER 10001:10001
+WORKDIR /work
+CMD ["bash"]
+
+FROM base AS azure-cli
+ARG PYTHON_MINOR
+ARG AZURE_CLI_LOCK
+ARG LDO_CLI_LOCK
+# uv builds the image but is not shipped in it.
+RUN --mount=type=bind,source=images,target=/src \
+    --mount=type=bind,from=fetch,source=/fetched,target=/fetched \
+    sh /src/common/ensure-python.sh "${PYTHON_MINOR}" /fetched/uv/usr/local/bin/uv \
+    && sh /src/azure-cli/install.sh /fetched/uv/usr/local/bin/uv \
+        "/src/${AZURE_CLI_LOCK}" "/src/${LDO_CLI_LOCK}" /fetched/ldo-cli/wheels \
+    && sh /src/common/finalise.sh
+ENV HOME=/home/app \
+    AZURE_CORE_COLLECT_TELEMETRY=no \
+    PYTHONUNBUFFERED=1
+USER 10001:10001
+WORKDIR /work
+CMD ["bash"]
+
+FROM base AS terraform
+ARG TERRAFORM_VERSION
+COPY --from=go /built/tenv/ /built/tflint/ /built/terraform-docs/ /built/conftest/ /
+ENV TENV_ROOT=/home/app/.tenv \
+    TENV_AUTO_INSTALL=true \
+    CHECKPOINT_DISABLE=1
+# tenv checks the HashiCorp signature and checksums of what it downloads.
+RUN --mount=type=bind,source=images,target=/src \
+    tenv tf install "${TERRAFORM_VERSION}" \
+    && tenv tf use "${TERRAFORM_VERSION}" \
+    && sh /src/common/finalise.sh
+ENV HOME=/home/app
+USER 10001:10001
+WORKDIR /work
+CMD ["bash"]
+
+FROM base AS powershell
+ARG AZ_POWERSHELL_VERSION
+ARG PESTER_VERSION
+ARG PSSCRIPTANALYZER_VERSION
+ARG LIBREDEVOPSHELPERS_VERSION
+COPY --from=fetch /fetched/powershell/ /
+ENV POWERSHELL_TELEMETRY_OPTOUT=1 \
+    POWERSHELL_UPDATECHECK=Off \
+    DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    DOTNET_NOLOGO=1
+RUN --mount=type=bind,source=images,target=/src \
+    sh /src/powershell/install-modules.sh \
+    && sh /src/common/finalise.sh
+ENV HOME=/home/app
+USER 10001:10001
+WORKDIR /work
+CMD ["bash"]
+
+FROM base AS toolbox
+ARG PYTHON_MINOR
+COPY --from=fetch /fetched/uv/ /
+COPY --from=azure-cli /opt/ /opt/
+COPY --from=azure-cli /usr/local/bin/az /usr/local/bin/ldo /usr/local/bin/
+COPY --from=go /built/tenv/ /built/tflint/ /built/terraform-docs/ /built/conftest/ /
+COPY --from=terraform /home/app/.tenv/ /home/app/.tenv/
+COPY --from=powershell /opt/microsoft/ /opt/microsoft/
+COPY --from=powershell /usr/local/share/powershell/ /usr/local/share/powershell/
+ENV TENV_ROOT=/home/app/.tenv \
+    TENV_AUTO_INSTALL=true \
+    CHECKPOINT_DISABLE=1 \
+    AZURE_CORE_COLLECT_TELEMETRY=no \
+    POWERSHELL_TELEMETRY_OPTOUT=1 \
+    POWERSHELL_UPDATECHECK=Off \
+    DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    DOTNET_NOLOGO=1 \
+    PYTHONUNBUFFERED=1
+RUN --mount=type=bind,source=images,target=/src \
+    sh /src/common/ensure-python.sh "${PYTHON_MINOR}" /usr/local/bin/uv \
+    && ln -sf /opt/microsoft/powershell/7/pwsh /usr/local/bin/pwsh \
+    && sh /src/common/finalise.sh
+ENV HOME=/home/app
+USER 10001:10001
+WORKDIR /work
+CMD ["bash"]

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Renovate bumps tool and image versions in versions.yml, and GitHub Actions digests. Hash pins and vulnerability patches are not Renovate's job: the Pins workflow rewrites versions.lock.json and images/locks on Renovate's branches, and refreshes them and the base image digests daily.",
+  "extends": ["config:best-practices", ":semanticCommits"],
+  "timezone": "Europe/London",
+  "schedule": ["* 0-6 * * 6"],
+  "minimumReleaseAge": "3 days",
+  "labels": ["dependencies"],
+  "gitIgnoredAuthors": ["41898282+github-actions[bot]@users.noreply.github.com"],
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "description": "Security fixes skip the weekly schedule and the release-age wait",
+    "enabled": true,
+    "schedule": ["at any time"],
+    "minimumReleaseAge": null,
+    "labels": ["security"]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Versions in versions.yml that carry a renovate comment on the line above",
+      "managerFilePatterns": ["/^versions\\.yml$/"],
+      "matchStrings": [
+        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+registryUrl=(?<registryUrl>\\S+))?(?:\\s+extractVersion=(?<extractVersion>\\S+))?\\s*\\n\\s*(?:-\\s*\\{\\s*)?[\\w-]+:\\s*\"?(?<currentValue>[^\\s\",}]+)\"?"
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "One weekly pull request for tool bumps, so the Pins workflow repins them together",
+      "matchManagers": ["custom.regex"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "tools"
+    },
+    {
+      "description": "Stay on the PowerShell 7.6 LTS line; move to the next LTS by hand",
+      "matchPackageNames": ["PowerShell/PowerShell"],
+      "allowedVersions": "/^7\\.6\\./"
+    },
+    {
+      "description": "Stay on Terraform 1.x",
+      "matchPackageNames": ["hashicorp/terraform"],
+      "allowedVersions": "<2.0.0"
+    },
+    {
+      "description": "Give a new release of the security scanner a week before trusting it",
+      "matchPackageNames": ["aquasecurity/trivy"],
+      "minimumReleaseAge": "7 days"
+    }
+  ]
+}

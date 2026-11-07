@@ -1,0 +1,44 @@
+name: Bug report
+description: Something in an image does not work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        To report a security vulnerability, do not open an issue: use
+        [private vulnerability reporting](https://github.com/libre-devops/container-images/security/advisories/new).
+  - type: input
+    id: image
+    attributes:
+      label: Image and tag or digest
+      placeholder: ghcr.io/libre-devops/terraform:1.17.1-20261107
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options: [linux/amd64, linux/arm64]
+    validations:
+      required: true
+  - type: input
+    id: runtime
+    attributes:
+      label: Where it runs
+      placeholder: GitHub Actions container job, GitLab CI, Azure Pipelines, rootless Podman 5.7
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: The smallest command or pipeline snippet that shows the problem.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened
+    validations:
+      required: true

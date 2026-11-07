@@ -1,0 +1,11 @@
+# Trivy exceptions to the scan gate (scripts/scan.sh). Every entry needs a
+# statement saying why the finding does not apply, and an expiry date after
+# which it fails the gate again. Keep this list short, and prefer waiting for
+# an upstream fix to adding to it.
+#
+# vulnerabilities:
+#   - id: CVE-0000-00000
+#     paths: ["usr/local/bin/example"]
+#     statement: Not reachable; the vulnerable function is never called.
+#     expired_at: 2027-01-31
+vulnerabilities: []

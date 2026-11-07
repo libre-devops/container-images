@@ -1,0 +1,18 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/libre-devops/container-images/vex/libre-devops.openvex.json",
+  "author": "Libre DevOps",
+  "role": "Image maintainer",
+  "timestamp": "2026-11-07T00:00:00Z",
+  "version": 1,
+  "statements": [
+    {
+      "vulnerability": { "name": "CVE-2025-47273" },
+      "products": [{ "@id": "pkg:pypi/setuptools@70.3.0" }],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "No image installs setuptools 70.3.0. The finding comes from pip's pip/_vendor/vendor.txt: pip vendors only pkg_resources from setuptools 70.3.0, and setuptools.package_index, the module the advisory concerns, is not part of it. Installed setuptools is locked and audited by `just lock`, so a real vulnerable copy would be raised, not hidden by this statement.",
+      "timestamp": "2026-11-07T00:00:00Z"
+    }
+  ]
+}

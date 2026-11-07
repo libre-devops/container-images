@@ -1,0 +1,181 @@
+# Libre DevOps container images: the single source of truth.
+#
+# The builds, smoke tests, tags and README tables all come from this file,
+# through scripts/images.py. Adding a version of an image is one line under
+# that image's `versions` (plus a line under `bases` if it needs a new base).
+#
+# How the pins stay current:
+#   - Tool versions here are bumped by Renovate (the lines marked
+#     `renovate:`).
+#   - The SHA-256 of every download, per platform, lives in
+#     versions.lock.json, written by `just lock`. The Pins workflow rewrites
+#     it on any pull request branch in this repository that changes a
+#     version, so nobody recomputes a hash by hand.
+#   - Base image digests below are written by `just pin`. The Pins workflow
+#     refreshes them every Sunday and opens a pull request.
+
+registries:
+  - ghcr.io/libre-devops
+  - docker.io/libredevops
+
+# Existing packages (and package prefixes) in the registries that no image
+# here may ever reuse the name of. Checked by `just validate`.
+protected:
+  - azdo-agent-containers
+  - azdo-agent-rhel
+  - azure-function-app-deployment-gh-action-base
+  - azure-packer-gh-action-base
+  - azure-pulumi-gh-action-base
+  - azure-terraform-gh-action-base
+  - cicd-base-images
+  - powershell-helpers
+  - python-helpers
+  - terraform-apply-azure
+  - terraform-azure-azdo-pipeline-templates
+  - terraform-azure-composite-gh-action
+  - terraform-azure-docker-gh-action
+  - terraform-destroy-azure
+  - terraform-plan-azure
+  - terraform-plan-destroy-azure
+  - ubuntu-base-docker-container
+
+# Platform, and the GitHub-hosted runner that builds it natively.
+platforms:
+  linux/amd64: ubuntu-24.04
+  linux/arm64: ubuntu-24.04-arm
+
+# Base images, by key. Every Containerfile receives one as the BASE_IMAGE
+# build argument and needs only glibc, a POSIX shell and one of apt-get, dnf,
+# microdnf or apk, so moving to another distribution is a change to this
+# block alone. Keep each value a bare reference: `just pin` rewrites it.
+bases:
+  debian: dhi.io/debian-base:trixie-debian13-dev@sha256:61025cea33d5910165ced8b33edd3f6b6bfe161e129174887936a1b9a1442b20
+  python-3.12: dhi.io/python:3.12-debian13-dev@sha256:a211f0321f6b95709f447f5bf9a88c7d92ee42c71f40ad07741e3865ae6d23bc
+  python-3.13: dhi.io/python:3.13-debian13-dev@sha256:1303a6c6e9b856cfe9e1b25eaf44b4a165c28a8402140ef3b5151d9a60e4033a
+  python-3.14: dhi.io/python:3.14-debian13-dev@sha256:9ac7d2837dbd5739f0657be0b4af1cf9c6d0cc582a5d5886da9d4b321a03b8c3
+  python-3.15: dhi.io/python:3.15-debian13-dev@sha256:f9121e954baf4ec5f29d85f5025b64b4274054607db9753ac090a42281c66a7d
+
+# Other bases that every pull request builds and smoke tests the latest
+# version of each image on, so that changing distribution stays a one-line
+# edit. Nothing built on these is published.
+portability:
+  rhel: registry.access.redhat.com/ubi10/ubi:10.1@sha256:15f0a6e2b448ac7aa24425c9ab541e6402dc32b782844a285ccaeffb1c938fe1
+  rhel-minimal: registry.access.redhat.com/ubi10/ubi-minimal:10.2@sha256:c3fe95ec9f53a3888c47314eb4d08bde09ebde646a428137b445091afe1daf89
+  wolfi: cgr.dev/chainguard/wolfi-base:latest@sha256:24f549a7fcace88e69b9557941168c74645688ecc4acf7fb6d734a6b74e9019d
+
+# Tools, by exact version. The Go tools (shfmt, tenv, TFLint, terraform-docs,
+# Conftest) are built from source with this Go, never downloaded as binaries,
+# so they carry neither an old toolchain's vulnerabilities nor, thanks to
+# `just lock`, their dependencies' known ones.
+tools:
+  # renovate: datasource=golang-version depName=go
+  go: 1.27.3
+  # renovate: datasource=github-releases depName=koalaman/shellcheck extractVersion=^v(?<version>.+)$
+  shellcheck: 0.11.0
+  # renovate: datasource=github-releases depName=mvdan/sh extractVersion=^v(?<version>.+)$
+  shfmt: 3.14.1
+  # renovate: datasource=github-releases depName=jqlang/jq extractVersion=^jq-(?<version>.+)$
+  jq: 1.8.2
+  # renovate: datasource=github-releases depName=astral-sh/uv
+  uv: 0.13.7
+  # renovate: datasource=github-releases depName=tofuutils/tenv extractVersion=^v(?<version>.+)$
+  tenv: 4.15.1
+  # renovate: datasource=github-releases depName=terraform-linters/tflint extractVersion=^v(?<version>.+)$
+  tflint: 0.65.0
+  # renovate: datasource=github-releases depName=terraform-docs/terraform-docs extractVersion=^v(?<version>.+)$
+  terraform-docs: 0.24.0
+  # renovate: datasource=github-releases depName=open-policy-agent/conftest extractVersion=^v(?<version>.+)$
+  conftest: 0.71.1
+  # renovate: datasource=github-releases depName=libre-devops/ldo-cli extractVersion=^v(?<version>.+)$
+  ldo-cli: 0.8.1
+  # renovate: datasource=nuget depName=Az registryUrl=https://www.powershellgallery.com/api/v2/
+  az-powershell: 16.5.0
+  # renovate: datasource=nuget depName=Pester registryUrl=https://www.powershellgallery.com/api/v2/
+  pester: 6.2.0
+  # renovate: datasource=nuget depName=PSScriptAnalyzer registryUrl=https://www.powershellgallery.com/api/v2/
+  psscriptanalyzer: 1.25.0
+  # renovate: datasource=nuget depName=LibreDevOpsHelpers registryUrl=https://www.powershellgallery.com/api/v2/
+  libredevopshelpers: 3.0.1
+  # CI only; never installed in an image.
+  # renovate: datasource=github-releases depName=aquasecurity/trivy extractVersion=^v(?<version>.+)$
+  trivy: 0.76.2
+  # renovate: datasource=github-releases depName=hadolint/hadolint extractVersion=^v(?<version>.+)$
+  hadolint: 2.15.1
+  # renovate: datasource=github-releases depName=sigstore/cosign extractVersion=^v(?<version>.+)$
+  cosign: 3.1.4
+  # renovate: datasource=github-releases depName=zizmorcore/zizmor extractVersion=^v(?<version>.+)$
+  zizmor: 1.32.0
+  # renovate: datasource=github-releases depName=rhysd/actionlint extractVersion=^v(?<version>.+)$
+  actionlint: 1.7.12
+
+# In every image, on top of bash, git, curl and ca-certificates.
+common: [shellcheck, shfmt, jq]
+
+# Installed on CI runners by scripts/ci-tools.sh, as pinned release binaries.
+ci: [uv, shellcheck, shfmt, hadolint, trivy, cosign, zizmor, actionlint]
+
+# Each version entry takes:
+#   version   The image's main tool version. Quote it ("3.12", never 3.12).
+#   base      A key from `bases`.
+#   python    The CPython it runs on, where that is not the version itself.
+#   latest    true on exactly one entry per image: it gets the `latest` tag.
+#   moving    Extra moving tags derived from the version: minor (1.17),
+#             major (1).
+#   aliases   Extra moving tags, literally.
+# Each image takes `description`, `contents` (the README description of one
+# entry: {version}, {python}, any tool name and any included image's name,
+# with - as _, are filled in), and optionally `tools`, `os_packages` (logical
+# names for images/common/os-packages.sh), `download` (the version is itself
+# a pinned download), `includes` (other images it is assembled from, at their
+# latest versions) and `tests` (the smoke test suites, default: its name).
+# Every image is an `AS <name>` stage in images/Containerfile.
+images:
+  python:
+    description: CPython and uv
+    contents: CPython {version}, uv {uv}
+    tools: [uv]
+    versions:
+      - { version: "3.12", base: python-3.12 }
+      - { version: "3.13", base: python-3.13 }
+      - { version: "3.14", base: python-3.14 }
+      - { version: "3.15", base: python-3.15, latest: true, moving: [major] }
+
+  azure-cli:
+    description: The Azure CLI in its own virtual environment, and ldo-cli
+    contents: Azure CLI {version} on Python {python}, ldo-cli {ldo_cli}
+    tools: [uv, ldo-cli]
+    versions:
+      # renovate: datasource=pypi depName=azure-cli
+      - { version: "2.92.0", python: "3.12", base: python-3.12, latest: true }
+      # Long-lived line for networks whose TLS inspection fails the stricter
+      # certificate checks in Python 3.13 and later. Not bumped by Renovate.
+      - { version: "2.72.0", python: "3.12", base: python-3.12 }
+
+  terraform:
+    description: tenv with a default Terraform, TFLint, terraform-docs and Conftest
+    contents: Terraform {version} by default (tenv {tenv}; a repository's .terraform-version wins), TFLint {tflint}, terraform-docs {terraform_docs}, Conftest {conftest}
+    tools: [tenv, tflint, terraform-docs, conftest]
+    versions:
+      # renovate: datasource=github-releases depName=hashicorp/terraform extractVersion=^v(?<version>.+)$
+      - { version: "1.17.1", base: debian, latest: true, moving: [minor, major] }
+
+  powershell:
+    description: PowerShell LTS with PSScriptAnalyzer, Pester, Az and LibreDevOpsHelpers
+    contents: PowerShell {version}, Az {az_powershell}, Pester {pester}, PSScriptAnalyzer {psscriptanalyzer}, LibreDevOpsHelpers {libredevopshelpers}
+    tools: [az-powershell, pester, psscriptanalyzer, libredevopshelpers]
+    # .NET, which PowerShell runs on, needs ICU, OpenSSL, zlib and libstdc++.
+    os_packages: [icu, openssl, zlib, libstdc++]
+    download: powershell
+    versions:
+      # renovate: datasource=github-releases depName=PowerShell/PowerShell extractVersion=^v(?<version>.+)$
+      - { version: "7.6.9", base: debian, latest: true, moving: [minor, major], aliases: [lts] }
+
+  toolbox:
+    description: Every tool above in one image, for ease
+    contents: Python {python} and uv {uv}, Azure CLI {azure_cli}, ldo-cli {ldo_cli}, Terraform {terraform} by default (tenv {tenv}), TFLint {tflint}, terraform-docs {terraform_docs}, Conftest {conftest}, PowerShell {powershell} with Az {az_powershell}, Pester {pester}, PSScriptAnalyzer {psscriptanalyzer} and LibreDevOpsHelpers {libredevopshelpers}
+    # Assembled from the latest version of each, on the Azure CLI's Python.
+    includes: [azure-cli, terraform, powershell]
+    tools: [uv]
+    tests: [python, azure-cli, terraform, powershell]
+    versions:
+      - { version: "1", base: python-3.12, latest: true }

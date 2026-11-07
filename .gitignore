@@ -1,0 +1,7 @@
+# Pinned tools installed by `just tools`.
+.tools/
+# Release artefacts written by scripts/publish.sh in CI.
+release/
+digests/
+# Python bytecode.
+__pycache__/

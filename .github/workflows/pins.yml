@@ -1,0 +1,118 @@
+name: Pins
+
+# Keeps every hash pin current, so nobody recomputes one by hand.
+#
+# Pull requests from branches in this repository (Renovate's included) that
+# change versions.yml: rewrites versions.lock.json (the SHA-256 of every
+# download) and README.md, pushes them to the branch, and starts the Build
+# workflow on the new commit, because a push made with GITHUB_TOKEN does not
+# trigger workflows by itself. Pull requests from forks run `just lock docs`
+# themselves; Build tells them to.
+#
+# Every day, and on demand: re-resolves every base image tag to its current
+# digest, re-audits every pinned dependency against OSV, then repins and
+# regenerates the same way, on a pull request of its own. Daily, so that a
+# fix lands as soon as it exists.
+
+on:
+  pull_request:
+    paths:
+      - versions.yml
+      - scripts/images.py
+  schedule:
+    - cron: "0 2 * * *" # Every day at 02:00 UTC
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  branch:
+    name: Repin the pull request branch
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: write
+    concurrency:
+      group: pins-${{ github.head_ref }}
+      cancel-in-progress: true
+    env:
+      BRANCH: ${{ github.head_ref }}
+    steps:
+      - name: Check out the branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.head_ref }}
+          persist-credentials: false
+      - name: Install pinned tools
+        run: scripts/ci-tools.sh uv
+      - name: Repin downloads and regenerate README.md
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          uv run scripts/images.py lock
+          uv run scripts/images.py docs
+      - name: Push any change and start Build on it
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git add versions.lock.json README.md images/locks
+          if git diff --cached --quiet; then
+            echo "The pins and README.md are already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --message "chore: repin downloads and regenerate README.md"
+          # Authenticate the push from GH_TOKEN at run time, rather than
+          # leaving a credential in .git/config.
+          gh auth setup-git
+          git push origin "HEAD:$BRANCH"
+          gh workflow run build.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"
+
+  refresh:
+    name: Refresh base digests and security patches
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned tools
+        run: scripts/ci-tools.sh uv
+      - name: Re-resolve base digests, repin downloads and regenerate README.md
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          uv run scripts/images.py pin
+          uv run scripts/images.py lock
+          uv run scripts/images.py docs
+      - name: Open or update the pull request
+        id: pr
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          branch: pins/refresh
+          delete-branch: true
+          add-paths: |
+            versions.yml
+            versions.lock.json
+            images/locks
+            README.md
+          commit-message: "chore: refresh base image digests and security patches"
+          title: "chore: refresh base image digests and security patches"
+          body: |
+            Daily refresh: every base image tag in `versions.yml` re-resolved to its current
+            digest, and every pinned dependency re-audited against OSV, with any newly fixed
+            vulnerability patched. Merge once the Build workflow passes; the merge releases.
+      - name: Start Build on the pull request
+        if: steps.pr.outputs.pull-request-operation == 'created' || steps.pr.outputs.pull-request-operation == 'updated'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run build.yml --repo "$GITHUB_REPOSITORY" --ref pins/refresh

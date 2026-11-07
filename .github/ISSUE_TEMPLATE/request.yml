@@ -1,0 +1,30 @@
+name: Request a tool, version or image
+description: Ask for a tool to be added, a version to be built, or a new image.
+labels: [enhancement]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Request
+      options: [A tool in an existing image, A new version of an image, A new image]
+    validations:
+      required: true
+  - type: input
+    id: what
+    attributes:
+      label: What, and which image
+      placeholder: Checkov in terraform; Python 3.16; an image for Ansible
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: The job it serves, and why a layer on top of an existing image is not enough.
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Where it is published
+      description: Its release page or package index, so it can be pinned and verified.
