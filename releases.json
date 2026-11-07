@@ -1,56 +1,61 @@
 {
   "azure-cli": {
     "2.72.0": {
-      "date_tag": "2.72.0-py3.12-20261107",
-      "digest": "sha256:85016c319e42faa92bbaf3c851497d09ccc552451b5972becb206a5cc47d0ecd",
+      "date_tag": "2.72.0-py3.12-20261107.3",
+      "digest": "sha256:8fbd8cc8c5b15f57e6769b6adb80e6b249462db2d416607bed6a1473c9985978",
       "released": "2026-11-07"
     },
     "2.92.0": {
-      "date_tag": "2.92.0-py3.12-20261107",
-      "digest": "sha256:453043983918f2336cb337a23bfe7145fdb24328b2a630d7ac866089fdd672ab",
+      "date_tag": "2.92.0-py3.12-20261107.3",
+      "digest": "sha256:8eccedf3cc48b847459e9ce16b4f57ccb769e75215d675341a9ea31f11089497",
       "released": "2026-11-07"
     }
   },
   "powershell": {
     "7.6.9": {
-      "date_tag": "7.6.9-20261107",
-      "digest": "sha256:06e99cb22df510fca42fc0a3375fac7dfd2f40c148cdc0299deac8f49c1fc843",
+      "date_tag": "7.6.9-20261107.3",
+      "digest": "sha256:fe7a6b84036bd629906ea07c8228f4ac09431c4e1bba131df8274e76994fc73e",
       "released": "2026-11-07"
     }
   },
   "python": {
     "3.12": {
-      "date_tag": "3.12-20261107",
-      "digest": "sha256:497cf9056cb8c51f1b1f4d3d9549e1a5b598dc5c3a38983dd30781657ac01308",
+      "date_tag": "3.12-20261107.3",
+      "digest": "sha256:f555821b9a3babc68de6f99b5e934585e8a7d9df2b88cd2e59cc3ec6aa2818eb",
       "released": "2026-11-07"
     },
     "3.13": {
-      "date_tag": "3.13-20261107",
-      "digest": "sha256:d77d305f8bfe8c07ce13356b77a050ff19de8b8ed5cbfabe74e47c4fe9476a59",
+      "date_tag": "3.13-20261107.3",
+      "digest": "sha256:207f4af99756c2c17c8030b3737d29db060d01f2136f5c865fb61eaefc349eb7",
       "released": "2026-11-07"
     },
     "3.14": {
-      "date_tag": "3.14-20261107",
-      "digest": "sha256:5c839a349fe444ea524e8718f4559930cf49a20d3e427988f9ac26beee49291a",
+      "date_tag": "3.14-20261107.3",
+      "digest": "sha256:9f175fd369e00defef21b3f11d0542b490cb62a6e807383f7601508f183f7497",
       "released": "2026-11-07"
     },
     "3.15": {
-      "date_tag": "3.15-20261107",
-      "digest": "sha256:cc955b50bf1078539e78b776509c3c3f6209a99805d8b3cca044716f293eee03",
+      "date_tag": "3.15-20261107.3",
+      "digest": "sha256:7f770a1d81d75accd566030297accea7162373ec8ee977700b90efba1737ac7b",
       "released": "2026-11-07"
     }
   },
   "terraform": {
     "1.17.1": {
-      "date_tag": "1.17.1-20261107",
-      "digest": "sha256:18154de54ef9e91462fe5c41a88702bc2b8876e2199106e11881259a50e32294",
+      "date_tag": "1.17.1-20261107.2",
+      "digest": "sha256:7bcb52b1aa98955459c09db0f657beb970fc863626a8d6da33401ed3f18a07e4",
+      "released": "2026-11-07"
+    },
+    "1.17.1-alpine": {
+      "date_tag": "1.17.1-alpine-20261107.2",
+      "digest": "sha256:26eb825c197b1a4bdca134a505ae9d11e5634462efeef39561846cad9282bf6a",
       "released": "2026-11-07"
     }
   },
   "toolbox": {
     "1": {
-      "date_tag": "1-20261107",
-      "digest": "sha256:379384369cd077192882f3b8622337e1de9c2fc6e35c3d1fbfc0f694f80168ed",
+      "date_tag": "1-20261107.3",
+      "digest": "sha256:95fcf9a6a2b533802eb327576deedc34843ac62b7c5c437e56f877b52503c13b",
       "released": "2026-11-07"
     }
   }
