@@ -1,0 +1,57 @@
+{
+  "azure-cli": {
+    "2.72.0": {
+      "date_tag": "2.72.0-py3.12-20261107",
+      "digest": "sha256:85016c319e42faa92bbaf3c851497d09ccc552451b5972becb206a5cc47d0ecd",
+      "released": "2026-11-07"
+    },
+    "2.92.0": {
+      "date_tag": "2.92.0-py3.12-20261107",
+      "digest": "sha256:453043983918f2336cb337a23bfe7145fdb24328b2a630d7ac866089fdd672ab",
+      "released": "2026-11-07"
+    }
+  },
+  "powershell": {
+    "7.6.9": {
+      "date_tag": "7.6.9-20261107",
+      "digest": "sha256:06e99cb22df510fca42fc0a3375fac7dfd2f40c148cdc0299deac8f49c1fc843",
+      "released": "2026-11-07"
+    }
+  },
+  "python": {
+    "3.12": {
+      "date_tag": "3.12-20261107",
+      "digest": "sha256:497cf9056cb8c51f1b1f4d3d9549e1a5b598dc5c3a38983dd30781657ac01308",
+      "released": "2026-11-07"
+    },
+    "3.13": {
+      "date_tag": "3.13-20261107",
+      "digest": "sha256:d77d305f8bfe8c07ce13356b77a050ff19de8b8ed5cbfabe74e47c4fe9476a59",
+      "released": "2026-11-07"
+    },
+    "3.14": {
+      "date_tag": "3.14-20261107",
+      "digest": "sha256:5c839a349fe444ea524e8718f4559930cf49a20d3e427988f9ac26beee49291a",
+      "released": "2026-11-07"
+    },
+    "3.15": {
+      "date_tag": "3.15-20261107",
+      "digest": "sha256:cc955b50bf1078539e78b776509c3c3f6209a99805d8b3cca044716f293eee03",
+      "released": "2026-11-07"
+    }
+  },
+  "terraform": {
+    "1.17.1": {
+      "date_tag": "1.17.1-20261107",
+      "digest": "sha256:18154de54ef9e91462fe5c41a88702bc2b8876e2199106e11881259a50e32294",
+      "released": "2026-11-07"
+    }
+  },
+  "toolbox": {
+    "1": {
+      "date_tag": "1-20261107",
+      "digest": "sha256:379384369cd077192882f3b8622337e1de9c2fc6e35c3d1fbfc0f694f80168ed",
+      "released": "2026-11-07"
+    }
+  }
+}

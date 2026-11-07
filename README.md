@@ -305,7 +305,17 @@ Renovate and Dependabot both update digest pins in your own repositories.
 
 The newest digest of every version, as of the last release:
 
-_No release has been published yet. This table fills in after the first release._
+| Image | Version | Newest date tag | Digest | Released |
+| --- | --- | --- | --- | --- |
+| `python` | `3.12` | `3.12-20261107` | `sha256:497cf9056cb8c51f1b1f4d3d9549e1a5b598dc5c3a38983dd30781657ac01308` | 2026-11-07 |
+| `python` | `3.13` | `3.13-20261107` | `sha256:d77d305f8bfe8c07ce13356b77a050ff19de8b8ed5cbfabe74e47c4fe9476a59` | 2026-11-07 |
+| `python` | `3.14` | `3.14-20261107` | `sha256:5c839a349fe444ea524e8718f4559930cf49a20d3e427988f9ac26beee49291a` | 2026-11-07 |
+| `python` | `3.15` | `3.15-20261107` | `sha256:cc955b50bf1078539e78b776509c3c3f6209a99805d8b3cca044716f293eee03` | 2026-11-07 |
+| `azure-cli` | `2.92.0` | `2.92.0-py3.12-20261107` | `sha256:453043983918f2336cb337a23bfe7145fdb24328b2a630d7ac866089fdd672ab` | 2026-11-07 |
+| `azure-cli` | `2.72.0` | `2.72.0-py3.12-20261107` | `sha256:85016c319e42faa92bbaf3c851497d09ccc552451b5972becb206a5cc47d0ecd` | 2026-11-07 |
+| `terraform` | `1.17.1` | `1.17.1-20261107` | `sha256:18154de54ef9e91462fe5c41a88702bc2b8876e2199106e11881259a50e32294` | 2026-11-07 |
+| `powershell` | `7.6.9` | `7.6.9-20261107` | `sha256:06e99cb22df510fca42fc0a3375fac7dfd2f40c148cdc0299deac8f49c1fc843` | 2026-11-07 |
+| `toolbox` | `1` | `1-20261107` | `sha256:379384369cd077192882f3b8622337e1de9c2fc6e35c3d1fbfc0f694f80168ed` | 2026-11-07 |
 
 ## Security and supply chain
 
