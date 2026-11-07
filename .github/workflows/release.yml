@@ -51,11 +51,6 @@ jobs:
         run: scripts/ci-tools.sh uv
       - name: Validate versions.yml, the lock and the base pins
         run: uv run scripts/images.py validate
-      - name: Make sure every Docker Hub repository exists, is public and has its overview
-        env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-        run: uv run scripts/images.py dockerhub
       - name: Build the matrices
         id: matrix
         run: |
@@ -63,9 +58,30 @@ jobs:
           echo "date=$(date -u +%Y%m%d)" >>"$GITHUB_OUTPUT"
           echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >>"$GITHUB_OUTPUT"
 
+  # Separate from prepare on purpose: GitHub withholds a job's outputs if they
+  # contain the value of any secret that job used, and the Docker Hub username
+  # appears in every repository name in the matrix.
+  dockerhub:
+    name: Docker Hub repositories
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned tools
+        run: scripts/ci-tools.sh uv
+      - name: Make sure every repository exists, is public and has its overview
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: uv run scripts/images.py dockerhub
+
   build:
     name: Build ${{ matrix.id }} ${{ matrix.arch }}
-    needs: prepare
+    needs: [prepare, dockerhub]
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
