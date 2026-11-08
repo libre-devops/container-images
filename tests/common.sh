@@ -21,9 +21,9 @@ ok "HOME and /work are writable"
 for tool in bash git curl jq shellcheck shfmt; do
 	command -v "$tool" >/dev/null || fail "$tool is not on PATH"
 done
-bash --version | head -n 1
+bash --version | sed -n 1p
 git --version
-curl --version | head -n 1
+curl --version | sed -n 1p
 
 [ "$(jq --version)" = "jq-$EXPECT_JQ" ] || fail "jq is $(jq --version), want $EXPECT_JQ"
 grep -qx "version: $EXPECT_SHELLCHECK" <<<"$(shellcheck --version)" || fail "ShellCheck is not $EXPECT_SHELLCHECK"

@@ -92,7 +92,7 @@ unpack() {
 # put <name>...: installs each named executable from the unpacked archive.
 put() {
 	for name in "$@"; do
-		found=$(find "$work/x" -type f -name "$name" | head -n 1)
+		found=$(find "$work/x" -type f -name "$name" | sed -n 1p)
 		[ -n "$found" ] || die "$name is not in ${url##*/}"
 		install -m 0755 "$found" "$bin/$name"
 	done
