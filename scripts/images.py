@@ -14,7 +14,8 @@ Commands:
     matrix [--github-output]         CI matrices as JSON: builds, entries, portability.
     build-args IMAGE [VER] [--base]  Build arguments, one KEY=VALUE per line.
     test-env IMAGE [VER]             Smoke test environment, one KEY=VALUE per line.
-    test-suites IMAGE                The smoke test scripts an image runs, one per line.
+    test-suites IMAGE [VERSION]      The smoke test scripts an image version runs, one per line.
+    test-server-image                The image the CA trust test runs its TLS server in.
     labels IMAGE [VER]               OCI labels, one KEY=VALUE per line.
     tags IMAGE VER DATE              Tags for one release, as JSON.
     repos IMAGE                      The repository in each registry, one per line.
@@ -100,6 +101,8 @@ DOWNLOADS: dict[str, tuple[str, str, str, dict[str, str]]] = {
         {"amd64": "linux-x64", "arm64": "linux-arm64", "amd64-musl": "linux-musl-x64"},
     ),
     "ldo-cli": ("libre-devops/ldo-cli", "v{v}", "libre_devops_helpers-{v}-py3-none-any.whl", {"any": ""}),
+    # GitHub publishes no musl build of the runner.
+    "github-runner": ("actions/runner", "v{v}", "actions-runner-linux-{a}-{v}.tar.gz", {"amd64": "x64", "arm64": "arm64"}),
     # CI only.
     "shfmt": ("mvdan/sh", "v{v}", "shfmt_v{v}_linux_{a}", {"amd64": "amd64", "arm64": "arm64"}),
     "trivy": ("aquasecurity/trivy", "v{v}", "trivy_{v}_Linux-{a}.tar.gz", {"amd64": "64bit", "arm64": "ARM64"}),
@@ -109,6 +112,28 @@ DOWNLOADS: dict[str, tuple[str, str, str, dict[str, str]]] = {
     "actionlint": ("rhysd/actionlint", "v{v}", "actionlint_{v}_linux_{a}.tar.gz", {"amd64": "amd64", "arm64": "arm64"}),
 }
 GO_ARCHES = ("amd64", "arm64")
+
+# Downloads that are not GitHub release assets, and the platforms each pins.
+# The Azure Pipelines agent is published on Microsoft's CDN, with its SHA-256
+# in the GitHub release notes; a Galaxy collection is one tarball for all.
+AZURE_PIPELINES_AGENT = {
+    "amd64": "linux-x64",
+    "arm64": "linux-arm64",
+    "amd64-musl": "linux-musl-x64",
+    "arm64-musl": "linux-musl-arm64",
+}
+GALAXY_COLLECTIONS = {"azure-azcollection": "azure.azcollection"}
+# OpenSSH portable publishes signed tarballs, not checksums: a release is
+# pinned only after its signature verifies against the OpenSSH release key
+# (Damien Miller's), named here by fingerprint.
+OPENSSH_CDN = "https://cdn.openbsd.org/pub/OpenBSD/OpenSSH"
+OPENSSH_RELEASE_KEY = "7168B983815A5EEF59A4ADFD2A3F414E736060BA"
+OTHER_DOWNLOADS: dict[str, tuple[str, ...]] = {
+    "go": GO_ARCHES,
+    "openssh": ("any",),
+    "azure-pipelines-agent": tuple(AZURE_PIPELINES_AGENT),
+    **{name: ("any",) for name in GALAXY_COLLECTIONS},
+}
 
 
 @dataclass(frozen=True)
@@ -166,6 +191,8 @@ class Entry:
     moving: tuple[str, ...]
     aliases: tuple[str, ...]
     flavour: str | None = None
+    atop: str | None = None  # another image whose stage this one is built on
+    contents: str | None = None  # this entry's README description, if not the image's
 
     @property
     def key(self) -> str:
@@ -236,6 +263,8 @@ class Config:
                         moving=tuple(item.get("moving") or ()),
                         aliases=tuple(item.get("aliases") or ()),
                         flavour=item.get("flavour"),
+                        atop=item.get("atop"),
+                        contents=item.get("contents"),
                     )
                 )
         if image and not out:
@@ -255,10 +284,16 @@ class Config:
         raise Failure(f"{image} has no version '{version}' (versions.yml has: {known})")
 
     def components(self, entry: Entry) -> list[Entry]:
-        """The image versions an entry is made of: itself, or for an image with
-        `includes` (the toolbox), the latest version of each included image."""
-        includes = self.images[entry.image].get("includes")
-        return [self.entry(name) for name in includes] if includes else [entry]
+        """The image versions an entry is made of: itself, the latest version of
+        each image it `includes` (the toolbox), and, for an entry built `atop`
+        another image, that image and everything it is made of."""
+        out = {entry.id: entry}
+        names = list(self.images[entry.image].get("includes") or [])
+        names += [entry.atop] if entry.atop else []
+        for name in names:
+            for c in self.components(self.entry(name)):
+                out.setdefault(c.id, c)
+        return list(out.values())
 
     def python_minor(self, entry: Entry) -> str | None:
         if entry.image == "python":
@@ -285,7 +320,11 @@ class Config:
     def downloads(self, entry: Entry) -> list[tuple[str, str]]:
         """(tool, version) for every release download an image version needs."""
         out = [("go", self.tools["go"])]
-        out += [(t, self.tools[t]) for t in self.tools_for(entry) if t in DOWNLOADS and t not in GO_BUILDS]
+        out += [
+            (t, self.tools[t])
+            for t in self.tools_for(entry)
+            if (t in DOWNLOADS or t in OTHER_DOWNLOADS) and t not in GO_BUILDS
+        ]
         for c in self.components(entry):
             extra = self.images[c.image].get("download")
             if extra:
@@ -296,19 +335,39 @@ class Config:
         return [(t, self.tools[t]) for t in self.tools_for(entry) if t in GO_BUILDS]
 
     def python_locks(self, entry: Entry) -> dict[str, dict]:
-        """The hash-locked requirement sets an image version installs."""
+        """The hash-locked requirement sets an image version installs. Each
+        includes pip-system-certs, so Python trusts the operating system's CA
+        store (and any CA added to it) rather than a bundle of its own."""
         locks = {}
         for c in self.components(entry):
             if c.image == "azure-cli":
-                locks["AZURE_CLI_LOCK"] = python_lock_spec("azure-cli", f"azure-cli=={c.version}", c.version, c.python)
+                locks["AZURE_CLI_LOCK"] = python_lock_spec(
+                    "azure-cli", f"azure-cli=={c.version}\n{SYSTEM_CERTS}", c.version, c.python
+                )
                 ldo = self.tools["ldo-cli"]
                 locks["LDO_CLI_LOCK"] = python_lock_spec(
-                    "ldo-cli", f"libre-devops-helpers=={ldo}", ldo, c.python, exclude="libre-devops-helpers"
+                    "ldo-cli", f"libre-devops-helpers=={ldo}\n{SYSTEM_CERTS}", ldo, c.python, exclude="libre-devops-helpers"
                 )
+        if entry.image == "ansible":
+            locks["ANSIBLE_LOCK"] = python_lock_spec("ansible", ansible_requirement(entry.version), entry.version, entry.python)
+        elif entry.image == "ansible-azure":
+            core = next(c for c in self.components(entry) if c.image == "ansible")
+            collection = GALAXY_COLLECTIONS["azure-azcollection"]
+            locks["ANSIBLE_LOCK"] = python_lock_spec(
+                "ansible-azure",
+                f"{ansible_requirement(core.version)}\n# and the requirements.txt of {collection}=={entry.version}",
+                entry.version,
+                self.python_minor(entry),
+                collection=("azure-azcollection", entry.version),
+            )
         return locks
 
     def tests(self, entry: Entry) -> list[str]:
-        return list(self.images[entry.image].get("tests") or [entry.image])
+        suites = list(self.images[entry.image].get("tests") or [entry.image])
+        for c in self.components(entry):
+            if c is not entry:
+                suites += self.tests(c)
+        return list(dict.fromkeys(suites))
 
     def all_downloads(self) -> set[tuple[str, str]]:
         needed = {(t, self.tools[t]) for t in self.ci}
@@ -331,7 +390,19 @@ class Config:
         return [f"{r}/{image}" for r in self.registries]
 
 
-def python_lock_spec(name: str, requirement: str, version: str, python: str, exclude: str = "") -> dict:
+SYSTEM_CERTS = "pip-system-certs"
+
+
+def ansible_requirement(core: str) -> str:
+    """ansible-core with ansible-lint and the libraries common playbooks need:
+    jmespath (json_query), netaddr (ipaddr filters) and pywinrm (Windows hosts).
+    Unpinned names resolve to the newest release compatible with that core."""
+    return "\n".join([f"ansible-core=={core}", "ansible-lint", "jmespath", "netaddr", "pywinrm", SYSTEM_CERTS])
+
+
+def python_lock_spec(
+    name: str, requirement: str, version: str, python: str, exclude: str = "", collection: tuple[str, str] | None = None
+) -> dict:
     key = f"{name}-{version}-py{python}"
     return {
         "key": key,
@@ -339,6 +410,7 @@ def python_lock_spec(name: str, requirement: str, version: str, python: str, exc
         "python": python,
         "file": f"{PYTHON_LOCKS}/{key}.txt",
         "exclude": exclude,
+        "collection": collection,
     }
 
 
@@ -435,9 +507,68 @@ def pin_go_toolchain(version: str) -> dict:
     return pinned
 
 
+def pin_azure_pipelines_agent(version: str, token: str | None) -> dict:
+    """The agent's tarballs, with the SHA-256 Microsoft lists for each in the
+    release notes of the matching GitHub release."""
+    headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    body = http_json(f"https://api.github.com/repos/microsoft/azure-pipelines-agent/releases/tags/v{version}", headers=headers)["body"]
+    pinned = {}
+    for arch, name in AZURE_PIPELINES_AGENT.items():
+        asset = f"vsts-agent-{name}-{version}.tar.gz"
+        row = re.search(rf"\[{re.escape(asset)}\]\((https://[^)\s]+)\)\s*\|\s*([0-9a-f]{{64}})", body)
+        if not row:
+            raise Failure(f"the release notes of azure-pipelines-agent v{version} list no SHA-256 for {asset}")
+        pinned[arch] = {"url": row[1], "sha256": row[2]}
+        note(f"  azure-pipelines-agent {version} {arch}: {row[2]}")
+    return pinned
+
+
+def pin_galaxy_collection(tool: str, version: str) -> dict:
+    namespace, name = GALAXY_COLLECTIONS[tool].split(".")
+    meta = http_json(
+        f"https://galaxy.ansible.com/api/v3/plugin/ansible/content/published/collections/index/{namespace}/{name}/versions/{version}/"
+    )
+    note(f"  {tool} {version}: {meta['artifact']['sha256']}")
+    return {"any": {"url": meta["download_url"], "sha256": meta["artifact"]["sha256"]}}
+
+
+def pin_openssh(version: str) -> dict:
+    """The OpenSSH portable release tarball, pinned by SHA-256 once its PGP
+    signature verifies against OPENSSH_RELEASE_KEY."""
+    import tempfile
+
+    url = f"{OPENSSH_CDN}/portable/openssh-{version}.tar.gz"
+    with tempfile.TemporaryDirectory() as tmp:
+        work = Path(tmp)
+        for name, source in (("key.asc", f"{OPENSSH_CDN}/RELEASE_KEY.asc"), ("release.tar.gz", url), ("release.asc", f"{url}.asc")):
+            with http(source, timeout=300) as response:
+                (work / name).write_bytes(response.read())
+        home = work / "gnupg"
+        home.mkdir(mode=0o700)
+        env = {**os.environ, "GNUPGHOME": str(home)}
+        subprocess.run(["gpg", "--batch", "--quiet", "--import", str(work / "key.asc")], env=env, check=True, capture_output=True)
+        result = subprocess.run(
+            ["gpg", "--batch", "--status-fd", "1", "--verify", str(work / "release.asc"), str(work / "release.tar.gz")],
+            env=env, capture_output=True, text=True,
+        )  # fmt: skip
+        if not re.search(rf"^\[GNUPG:\] VALIDSIG .* {OPENSSH_RELEASE_KEY}$", result.stdout, flags=re.M):
+            raise Failure(f"openssh-{version}.tar.gz is not signed by the OpenSSH release key {OPENSSH_RELEASE_KEY}")
+        digest = hashlib.sha256((work / "release.tar.gz").read_bytes()).hexdigest()
+    note(f"  openssh {version}: signature verified, {digest}")
+    return {"any": {"url": url, "sha256": digest}}
+
+
 def pin_download(tool: str, version: str, token: str | None) -> dict:
     if tool == "go":
         return pin_go_toolchain(version)
+    if tool == "openssh":
+        return pin_openssh(version)
+    if tool == "azure-pipelines-agent":
+        return pin_azure_pipelines_agent(version, token)
+    if tool in GALAXY_COLLECTIONS:
+        return pin_galaxy_collection(tool, version)
     repo, tag_pattern, asset_pattern, arches = DOWNLOADS[tool]
     tag = tag_pattern.format(v=version)
     headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
@@ -676,7 +807,10 @@ def compile_python_lock(spec: dict, overrides: dict[str, str], upgrade: list[str
         raises.unlink()
     for name in upgrade:
         command += ["--upgrade-package", name]
-    result = subprocess.run(command, input=spec["requirement"] + "\n", text=True, capture_output=True, cwd=ROOT)
+    requirement = spec["requirement"] + "\n"
+    if spec.get("collection"):
+        requirement += collection_requirements(*spec["collection"], spec["collection_asset"])
+    result = subprocess.run(command, input=requirement, text=True, capture_output=True, cwd=ROOT)
     if result.returncode != 0:
         raise Failure(f"uv could not lock {spec['requirement']} for Python {spec['python']}:\n{result.stderr}")
     text = path.read_text()
@@ -684,6 +818,22 @@ def compile_python_lock(spec: dict, overrides: dict[str, str], upgrade: list[str
         text = strip_requirement(text, spec["exclude"])
         path.write_text(text)
     return text
+
+
+def collection_requirements(tool: str, version: str, asset: dict) -> str:
+    """The requirements.txt inside a pinned Galaxy collection tarball."""
+    import io
+    import tarfile
+
+    with http(asset["url"], timeout=300) as response:
+        data = response.read()
+    if hashlib.sha256(data).hexdigest() != asset["sha256"]:
+        raise Failure(f"{tool} {version} does not match its pinned SHA-256")
+    with tarfile.open(fileobj=io.BytesIO(data)) as tar:
+        member = tar.extractfile("requirements.txt")
+        if member is None:
+            raise Failure(f"{tool} {version} has no requirements.txt")
+        return member.read().decode()
 
 
 def lock_python(spec: dict, previous: dict | None) -> dict:
@@ -720,7 +870,7 @@ def cmd_lock(cfg: Config, check: bool) -> None:
     py_needed = cfg.all_python_locks()
 
     def pinned(tool: str, version: str) -> bool:
-        arches = set(GO_ARCHES) if tool == "go" else set(DOWNLOADS[tool][3])
+        arches = set(OTHER_DOWNLOADS[tool]) if tool in OTHER_DOWNLOADS else set(DOWNLOADS[tool][3])
         return set(lock["tools"].get(tool, {}).get(version, {})) == arches
 
     if check:
@@ -771,6 +921,9 @@ def cmd_lock(cfg: Config, check: bool) -> None:
     python: dict[str, dict] = {}
     for key, spec in sorted(py_needed.items()):
         note(f"locking {key}")
+        if spec.get("collection"):
+            tool, version = spec["collection"]
+            spec["collection_asset"] = tools[tool][version]["any"]
         python[key] = lock_python(spec, lock["python"].get(key))
     for key, entry in lock["python"].items():
         if key not in python:
@@ -1147,6 +1300,9 @@ def cmd_validate(cfg: Config) -> None:
         for included in spec.get("includes") or []:
             if included not in cfg.images or cfg.images[included].get("includes"):
                 problems.append(f"image '{name}' includes '{included}', which is not a plain image")
+        for base_name in spec.get("portability") or []:
+            if base_name not in cfg.portability:
+                problems.append(f"image '{name}' lists portability base '{base_name}', which is not under portability")
         for suite in spec.get("tests") or [name]:
             if not (ROOT / "tests" / f"{suite}.sh").exists():
                 problems.append(f"image '{name}' runs tests/{suite}.sh, which does not exist")
@@ -1170,6 +1326,8 @@ def cmd_validate(cfg: Config) -> None:
                 if field in raw and not isinstance(raw[field], str):
                     problems.append(f"{name}: quote {field} {raw[field]!r}, or YAML reads it as a number")
         for e in entries:
+            if e.atop and (e.atop not in cfg.images or e.atop == name):
+                problems.append(f"{e.id}: atop '{e.atop}' is not another image")
             if e.base_key not in cfg.bases:
                 problems.append(f"{e.id}: base '{e.base_key}' is not under bases")
             for kind in e.moving:
@@ -1197,12 +1355,14 @@ def cmd_validate(cfg: Config) -> None:
 # Build inputs ------------------------------------------------------------------
 
 
-MODULE_TOOLS = ("az-powershell", "pester", "psscriptanalyzer", "libredevopshelpers")
+MODULE_TOOLS = ("az-powershell", "microsoft-graph", "pester", "psscriptanalyzer", "libredevopshelpers")
 
 
 def build_args(cfg: Config, entry: Entry, base: str | None = None) -> dict[str, str]:
     lock = load_lock()
     args = {"BASE_IMAGE": cfg.resolve_base(base, entry)}
+    if entry.atop:
+        args["ATOP"] = entry.atop
     if minor := cfg.python_minor(entry):
         args["PYTHON_MINOR"] = minor
     for c in cfg.components(entry):
@@ -1283,7 +1443,7 @@ def cmd_matrix(cfg: Config, github_output: bool) -> None:
                 }
             )
     for e in (e for e in cfg.entries() if e.latest and not e.flavour):
-        for name in cfg.portability:
+        for name in cfg.images[e.image].get("portability", list(cfg.portability)):
             portability.append(
                 {
                     "id": f"{e.id}-{name}",
@@ -1329,7 +1489,7 @@ def contents(cfg: Config, entry: Entry) -> str:
     for c in cfg.components(entry):
         values[c.image.replace("-", "_")] = c.version
     values.update(version=entry.version, python=cfg.python_minor(entry) or "")
-    return cfg.images[entry.image]["contents"].format(**values)
+    return (entry.contents or cfg.images[entry.image]["contents"]).format(**values)
 
 
 def images_table(cfg: Config) -> str:
@@ -1423,8 +1583,11 @@ def main(argv: list[str]) -> int:
     p.add_argument("image")
     p.add_argument("version")
     p.add_argument("date")
-    for name in ("repos", "test-suites"):
-        sub.add_parser(name).add_argument("image")
+    sub.add_parser("repos").add_argument("image")
+    sub.add_parser("test-server-image")
+    p = sub.add_parser("test-suites")
+    p.add_argument("image")
+    p.add_argument("version", nargs="?", default="")
     for name in ("lock", "docs"):
         sub.add_parser(name).add_argument("--check", action="store_true")
     sub.add_parser("pin")
@@ -1450,8 +1613,12 @@ def main(argv: list[str]) -> int:
                 print(local_ref(cfg.entry(args.image, args.version), args.base or None))
             case "test-env":
                 print(as_lines(test_env(cfg, cfg.entry(args.image, args.version))))
+            case "test-server-image":
+                # The pinned base of the newest python image, for the TLS
+                # server in the CA trust test (tests/run.sh).
+                print(cfg.entry("python").base)
             case "test-suites":
-                print("\n".join(cfg.tests(cfg.entry(args.image))))
+                print("\n".join(cfg.tests(cfg.entry(args.image, args.version))))
             case "labels":
                 print(as_lines(labels(cfg, cfg.entry(args.image, args.version))))
             case "tags":

@@ -16,6 +16,15 @@
     "minimumReleaseAge": null,
     "labels": ["security"]
   },
+  "customDatasources": {
+    "openssh-portable": {
+      "description": "OpenSSH portable releases, from the repository's tags: V_10_6_P2 is 10.6p2",
+      "defaultRegistryUrlTemplate": "https://api.github.com/repos/openssh/openssh-portable/tags?per_page=100",
+      "transformTemplates": [
+        "{\"releases\": $[$match(name, /^V_[0-9]+_[0-9]+_P[0-9]+$/)].{\"version\": $replace($replace($substringAfter(name, \"V_\"), \"_P\", \"p\"), \"_\", \".\")}}"
+      ]
+    }
+  },
   "customManagers": [
     {
       "customType": "regex",
@@ -42,6 +51,18 @@
       "description": "Stay on the PowerShell 7.6 LTS line; move to the next LTS by hand",
       "matchPackageNames": ["PowerShell/PowerShell"],
       "allowedVersions": "/^7\\.6\\./"
+    },
+    {
+      "description": "Keep the ansible-core 2.16 line (for managed hosts whose only Python is 3.6) on 2.16 patch releases",
+      "matchPackageNames": ["ansible-core"],
+      "matchCurrentVersion": "/^2\\.16\\./",
+      "allowedVersions": "/^2\\.16\\./"
+    },
+    {
+      "description": "OpenSSH versions look like 10.6p2. It is built from source and must stay on the latest release, so it merges like a patch whatever the bump",
+      "matchDatasources": ["custom.openssh-portable"],
+      "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)p(?<patch>\\d+)$",
+      "automerge": true
     },
     {
       "description": "Stay on Terraform 1.x",

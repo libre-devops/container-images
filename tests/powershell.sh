@@ -23,6 +23,17 @@ foreach ($name in $modules.Keys) {
     Assert-Version "$name imports at" $loaded.Version.ToString() $modules[$name]
 }
 Import-Module Az.Accounts
+# Microsoft.Graph is a meta-module of about forty: check it is installed at the
+# pinned version, and that its authentication module loads in the same session
+# as Az.Accounts, since both carry their own copies of the identity libraries.
+$graph = Get-InstalledPSResource -Name Microsoft.Graph -Scope AllUsers
+Assert-Version "Microsoft.Graph is installed at" $graph.Version.ToString() $env:EXPECT_MICROSOFT_GRAPH
+foreach ($name in "Microsoft.Graph.Authentication", "Microsoft.Graph.Users", "Microsoft.Graph.Groups") {
+    Import-Module $name -RequiredVersion $env:EXPECT_MICROSOFT_GRAPH
+}
+Get-MgContext | Out-Null
+Get-AzContext | Out-Null
+Write-Host "ok: Microsoft.Graph and Az load together"
 Invoke-ScriptAnalyzer -ScriptDefinition "Write-Output 1" | Out-Null
 Write-Host "ok: PSScriptAnalyzer runs"
 '

@@ -1,11 +1,50 @@
-# Trivy exceptions to the scan gate (scripts/scan.sh). Every entry needs a
-# statement saying why the finding does not apply, and an expiry date after
-# which it fails the gate again. Keep this list short, and prefer waiting for
-# an upstream fix to adding to it.
+# Trivy exceptions to the scan gate (scripts/scan.sh). Every entry says why it
+# is set aside and has an expiry date, after which it fails the gate again.
+# Keep this list short, prefer waiting for an upstream fix to adding to it,
+# and remove an entry as soon as its fix arrives. The README's "Vulnerability
+# handling policy" lists the entries in force.
 #
 # vulnerabilities:
 #   - id: CVE-0000-00000
 #     paths: ["usr/local/bin/example"]
 #     statement: Not reachable; the vulnerable function is never called.
 #     expired_at: 2027-01-31
-vulnerabilities: []
+vulnerabilities:
+  # The Azure Pipelines agent and the GitHub Actions runner each ship their own
+  # .NET runtime and libraries, which only Microsoft and GitHub can update.
+  # These findings apply. They were accepted by the maintainer on 2026-11-13,
+  # for 30 days, so the agent images could ship while a release with patched
+  # .NET is awaited; Renovate brings that release in. Paths are limited to the
+  # agents' own manifests.
+  - id: CVE-2026-58280
+    paths: ["opt/azure-pipelines-agent/bin/*.deps.json"]
+    statement: Azure Pipelines agent 5.281.1 bundles .NET runtime 10.0.12; fixed in 10.0.13, awaiting an agent release. Accepted risk, time-boxed.
+    expired_at: 2026-12-13
+  - id: CVE-2026-69651
+    paths: ["opt/azure-pipelines-agent/bin/*.deps.json"]
+    statement: Azure Pipelines agent 5.281.1 bundles .NET runtime 10.0.12; fixed in 10.0.13, awaiting an agent release. Accepted risk, time-boxed.
+    expired_at: 2026-12-13
+  - id: CVE-2026-84008
+    paths: ["opt/azure-pipelines-agent/bin/*.deps.json"]
+    statement: Azure Pipelines agent 5.281.1 bundles System.Security.Cryptography.Pkcs 9.0.10; fixed in 9.0.21, awaiting an agent release. Accepted risk, time-boxed.
+    expired_at: 2026-12-13
+  - id: CVE-2026-96225
+    paths: ["opt/azure-pipelines-agent/bin/*.deps.json"]
+    statement: Azure Pipelines agent 5.281.1 bundles .NET runtime 10.0.12; fixed in 10.0.13, awaiting an agent release. Accepted risk, time-boxed.
+    expired_at: 2026-12-13
+  - id: CVE-2026-96231
+    paths: ["opt/azure-pipelines-agent/bin/*.deps.json"]
+    statement: Azure Pipelines agent 5.281.1 bundles .NET runtime 10.0.12; fixed in 10.0.13, awaiting an agent release. Accepted risk, time-boxed.
+    expired_at: 2026-12-13
+  - id: CVE-2026-96233
+    paths: ["opt/azure-pipelines-agent/bin/*.deps.json"]
+    statement: Azure Pipelines agent 5.281.1 bundles .NET runtime 10.0.12; fixed in 10.0.13, awaiting an agent release. Accepted risk, time-boxed.
+    expired_at: 2026-12-13
+  - id: GHSA-p3jp-9v83-76w9
+    paths: ["opt/azure-pipelines-agent/bin/*.deps.json"]
+    statement: Azure Pipelines agent 5.281.1 bundles .NET runtime 10.0.12; fixed in 10.0.14, awaiting an agent release. Accepted risk, time-boxed.
+    expired_at: 2026-12-13
+  - id: CVE-2026-114149
+    paths: ["opt/actions-runner/bin/*.deps.json"]
+    statement: GitHub Actions runner 2.338.2 bundles Microsoft.AspNetCore.WebUtilities 8.0.25; fixed in 8.0.34, awaiting a runner release. Accepted risk, time-boxed.
+    expired_at: 2026-12-13

@@ -75,16 +75,31 @@ candidates() {
 	apt-get:libstdc++) echo libstdc++6 ;;
 	apt-get:openssl) echo libssl3t64 libssl3 ;;
 	apt-get:shadow) echo passwd ;;
+	apt-get:ssh) echo openssh-client ;;
+	apt-get:krb5) echo libgssapi-krb5-2 ;;
+	apt-get:libc-dev) echo libc6-dev ;;
+	apt-get:linux-headers) echo linux-libc-dev ;;
+	apt-get:openssl-dev) echo libssl-dev ;;
+	apt-get:zlib-dev) echo zlib1g-dev ;;
 	apt-get:xz) echo xz-utils ;;
 	apt-get:zlib) echo zlib1g ;;
 	dnf:git | microdnf:git) echo git-core git ;;
 	dnf:icu | microdnf:icu) echo libicu ;;
 	dnf:openssl | microdnf:openssl) echo openssl-libs ;;
 	dnf:shadow | microdnf:shadow) echo shadow-utils ;;
+	dnf:ssh | microdnf:ssh) echo openssh-clients ;;
+	dnf:krb5 | microdnf:krb5) echo krb5-libs ;;
+	dnf:libc-dev | microdnf:libc-dev) echo glibc-devel ;;
+	dnf:linux-headers | microdnf:linux-headers) echo kernel-headers ;;
+	dnf:openssl-dev | microdnf:openssl-dev) echo openssl-devel ;;
+	dnf:zlib-dev | microdnf:zlib-dev) echo zlib-ng-compat-devel zlib-devel ;;
 	dnf:zlib | microdnf:zlib) echo zlib-ng-compat zlib ;;
 	apk:ca-certificates) echo ca-certificates ca-certificates-bundle ;;
 	apk:icu) echo icu-libs icu ;;
 	apk:openssl) echo libssl3 openssl ;;
+	apk:ssh) echo openssh-client ;;
+	apk:krb5) echo krb5-libs ;;
+	apk:libc-dev) echo musl-dev glibc-dev ;;
 	*) echo "$1" ;;
 	esac
 }

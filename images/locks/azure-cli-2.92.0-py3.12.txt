@@ -1141,6 +1141,13 @@ paramiko==5.1.0 \
     #   fabric
     #   scp
     #   sshtunnel
+pip==26.3 \
+    --hash=sha256:6c36ae7da8695be67e3cd9f7d87919667ced53f57ce2ede75d89b5912ed2bc4c \
+    --hash=sha256:f3b60b20ffaadd4415ed7957212a38ac63fa4c5fa375bd0f4a797777940fad13
+    # via pip-system-certs
+pip-system-certs==5.3 \
+    --hash=sha256:19c8bf9957bcce7d69c4dbc2d0b2ef13de1984d53f50a59012e6dbbad0af67c6 \
+    --hash=sha256:3fbb5de62e374a99b688b1ad06e64ee5c4aeb633ef23e3a677d32e3e84fd863c
 pkginfo==2.0 \
     --hash=sha256:98c7aaa804dfe017b0de65d4b41a2f4649a656f43d3c21525b13e8075716fa1b \
     --hash=sha256:f7b4f267881785582c923631a0fa7e275b0d390a5cbab54aa4ec0ecc7eddb375
@@ -1403,9 +1410,9 @@ scp==0.13.6 \
     --hash=sha256:0a72f9d782e968b09b114d5607f96b1f16fe9942857afb355399edd55372fcf1 \
     --hash=sha256:5e23f22b00bdbeed83a982c6b2dfae98c125b80019c15fbb16dd64dfd864a452
     # via azure-cli
-semver==3.1.0 \
-    --hash=sha256:14bc073439513d7773662a338f4db9829cf16c12b74b9568e2d2689975fbd7fc \
-    --hash=sha256:6e4998f8b4762acdfea85f9bfd5b4032e0bb50038dc04bf82011b42d5d1145c5
+semver==3.1.1 \
+    --hash=sha256:149b26cabada6f63212f97e94505d21578cb1d280cf714827f328d5e70765fea \
+    --hash=sha256:c00cf7dac88a352bc6a4a997d6ac0bf95ba835c589bc0c54f7b76f9e2a45123a
     # via azure-cli
 six==1.17.0 \
     --hash=sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274 \
