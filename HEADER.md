@@ -478,8 +478,16 @@ that says why:
 | The base image's publisher | Docker Hardened Images attach signed [OpenVEX](https://openvex.dev) statements to every image, recording packages they have patched in place or that are not affected. The scan applies the statements attached to the pinned base digest, and no others. |
 | This repository, [`vex/libre-devops.openvex.json`](./vex/libre-devops.openvex.json) | Findings examined here and shown not to apply, each with its justification. Reviewed in pull requests like any other change. |
 
-Time-boxed exceptions, if ever needed, go in `.trivyignore.yaml` with a reason and an expiry
-date, after which the finding fails the gate again. There are none.
+Time-boxed exceptions go in [`.trivyignore.yaml`](./.trivyignore.yaml) with a reason and an
+expiry date, after which the finding fails the gate again. In force:
+
+| Findings | Where | Why accepted | Expires |
+| --- | --- | --- | --- |
+| Seven high CVEs in .NET runtime 10.0.12 and System.Security.Cryptography.Pkcs 9.0.10 | The Azure Pipelines agent's bundled .NET (`azure-pipelines-agent`) | Only Microsoft can update them, in an agent release; these findings apply | 2026-12-13 |
+| CVE-2026-114149 in Microsoft.AspNetCore.WebUtilities 8.0.25 | The GitHub Actions runner's bundled libraries (`github-runner`) | Only GitHub can update it, in a runner release; this finding applies | 2026-12-13 |
+
+Renovate brings in each agent release as it appears; an exception whose finding is gone has no
+effect, and is removed.
 
 ### Verifying an image
 
