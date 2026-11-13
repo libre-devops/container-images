@@ -9,9 +9,14 @@ fail() {
 }
 ok() { echo "ok: $*"; }
 
-[ "$(tfstacks --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)" = "$EXPECT_TFSTACKS" ] ||
-	fail "tfstacks is not $EXPECT_TFSTACKS: $(tfstacks --version)"
-ok "tfstacks $EXPECT_TFSTACKS"
+case $(uname -m) in
+x86_64) arch=amd64 ;;
+*) arch=arm64 ;;
+esac
+plugin=$HOME/.terraform.d/stacksplugin/bin/linux_$arch
+[ "$(cat "$plugin/.version")" = "$EXPECT_TFSTACKS" ] || fail "the cached Stacks plugin is not $EXPECT_TFSTACKS"
+"$plugin/tfstacks" 2>&1 | grep -q 'This binary is a plugin' || fail "$plugin/tfstacks does not run"
+ok "the Terraform Stacks plugin $EXPECT_TFSTACKS is cached for terraform stacks"
 
 [ "$TF_CLI_CONFIG_FILE" = /usr/local/share/terraform/airgapped.tfrc ] || fail "TF_CLI_CONFIG_FILE is $TF_CLI_CONFIG_FILE"
 

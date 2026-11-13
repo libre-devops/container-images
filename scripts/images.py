@@ -1503,7 +1503,9 @@ def cmd_validate(cfg: Config) -> None:
 # Build inputs ------------------------------------------------------------------
 
 
-MODULE_TOOLS = ("az-powershell", "microsoft-graph", "pester", "psscriptanalyzer", "libredevopshelpers")
+# Tools a build installs by version rather than from a pinned download: the
+# PowerShell modules, and tfstacks, whose cached copy records its version.
+VERSION_ARG_TOOLS = ("az-powershell", "microsoft-graph", "pester", "psscriptanalyzer", "libredevopshelpers", "tfstacks")
 
 
 def build_args(cfg: Config, entry: Entry, base: str | None = None) -> dict[str, str]:
@@ -1521,7 +1523,7 @@ def build_args(cfg: Config, entry: Entry, base: str | None = None) -> dict[str, 
     for tool, version in cfg.go_builds(entry):
         args[f"{arg_name(tool)}_GO"] = go_spec(lock, tool, version)
     for tool in cfg.tools_for(entry):
-        if tool in MODULE_TOOLS:
+        if tool in VERSION_ARG_TOOLS:
             args[f"{arg_name(tool)}_VERSION"] = cfg.tools[tool]
     for arg, spec in cfg.python_locks(entry).items():
         if spec["key"] not in lock["python"]:

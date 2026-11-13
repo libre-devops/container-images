@@ -229,10 +229,12 @@ CMD ["bash"]
 FROM ${ATOP} AS azure-terraform
 # hadolint ignore=DL3002
 USER 0
+ARG TFSTACKS_VERSION
 COPY --from=terraform-providers /mirror/ /usr/local/share/terraform/providers/
-COPY --from=fetch /fetched/tfstacks/ /
 RUN --mount=type=bind,source=images,target=/src \
+    --mount=type=bind,from=fetch,source=/fetched,target=/fetched \
     sh /src/terraform/cli-configs.sh /usr/local/share/terraform \
+    && sh /src/terraform/stacks-plugin.sh /fetched/tfstacks/usr/local/bin/tfstacks "${TFSTACKS_VERSION}" /home/app \
     && sh /src/common/finalise.sh
 ENV HOME=/home/app \
     TF_CLI_CONFIG_FILE=/usr/local/share/terraform/airgapped.tfrc

@@ -68,7 +68,7 @@ Ten images, each a thin layer of pinned tools on a hardened base:
   (`-alpine` tags), about a third smaller.
 - **`azure-terraform`**: the `terraform` image with the azurerm, azapi and msgraph providers
   (the newest three minor releases of each) in a local mirror, so `terraform init` needs no
-  registry for them, and the Terraform Stacks CLI, `tfstacks` (see
+  registry for them, and the Terraform Stacks plugin cached for `terraform stacks` (see
   [azure-terraform](#azure-terraform)).
 - **`powershell`**: PowerShell LTS with PSScriptAnalyzer, Pester, Az, Microsoft.Graph and
   [LibreDevOpsHelpers](https://github.com/libre-devops/powershell-helpers).
@@ -124,7 +124,7 @@ cosign verify ghcr.io/libre-devops/terraform:1 \
 | `ansible` | `2.22.0` `2.22` `latest`<br>`2.22.0-py3.14-YYYYMMDD` | `dhi.io/python:3.14-debian13-dev` | ansible-core 2.22.0 on Python 3.14, with ansible-lint, jmespath, netaddr, pywinrm, OpenSSH 10.6p2 and uv 0.13.7 | `ghcr.io/libre-devops/ansible:2.22.0`<br>`docker.io/libredevops/ansible:2.22.0` |
 | `ansible` | `2.16.20` `2.16`<br>`2.16.20-py3.12-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | ansible-core 2.16.20 on Python 3.12, for hosts whose only Python is 3.6 (RHEL 8): the last line that supports them. With ansible-lint, jmespath, netaddr, pywinrm, OpenSSH 10.6p2 and uv 0.13.7 | `ghcr.io/libre-devops/ansible:2.16.20`<br>`docker.io/libredevops/ansible:2.16.20` |
 | `ansible-azure` | `4.2.0` `4` `latest`<br>`4.2.0-YYYYMMDD` | `dhi.io/python:3.14-debian13-dev` | azure.azcollection 4.2.0 and its Python requirements, on ansible-core 2.22.0 and Python 3.14, with ansible-lint, OpenSSH 10.6p2 and uv 0.13.7 | `ghcr.io/libre-devops/ansible-azure:4.2.0`<br>`docker.io/libredevops/ansible-azure:4.2.0` |
-| `azure-terraform` | `1.17.1` `1.17` `1` `latest`<br>`1.17.1-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | Terraform 1.17.1 by default, TFLint 0.65.0, terraform-docs 0.24.0, Conftest 0.71.1; in a local provider mirror, azurerm 5.13.0, 5.12.0, 5.11.0, azapi 2.13.0, 2.12.0, 2.11.0 and msgraph 0.6.0, 0.5.0, 0.4.0; tfstacks 1.4.0 | `ghcr.io/libre-devops/azure-terraform:1.17.1`<br>`docker.io/libredevops/azure-terraform:1.17.1` |
+| `azure-terraform` | `1.17.1` `1.17` `1` `latest`<br>`1.17.1-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | Terraform 1.17.1 by default, TFLint 0.65.0, terraform-docs 0.24.0, Conftest 0.71.1; in a local provider mirror, azurerm 5.13.0, 5.12.0, 5.11.0, azapi 2.13.0, 2.12.0, 2.11.0 and msgraph 0.6.0, 0.5.0, 0.4.0; the Terraform Stacks plugin 1.4.0, cached | `ghcr.io/libre-devops/azure-terraform:1.17.1`<br>`docker.io/libredevops/azure-terraform:1.17.1` |
 | `powershell` | `7.6.9` `7.6` `7` `lts` `latest`<br>`7.6.9-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | PowerShell 7.6.9, Az 16.5.0, Microsoft.Graph 2.41.2, Pester 6.2.0, PSScriptAnalyzer 1.25.0, LibreDevOpsHelpers 3.0.1 | `ghcr.io/libre-devops/powershell:7.6.9`<br>`docker.io/libredevops/powershell:7.6.9` |
 | `toolbox` | `1` `latest`<br>`1-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | Python 3.12 and uv 0.13.7, Azure CLI 2.92.0, ldo-cli 0.8.1, Terraform 1.17.1 by default (tenv 4.15.1), TFLint 0.65.0, terraform-docs 0.24.0, Conftest 0.71.1, PowerShell 7.6.9 with Az 16.5.0, Microsoft.Graph 2.41.2, Pester 6.2.0, PSScriptAnalyzer 1.25.0 and LibreDevOpsHelpers 3.0.1 | `ghcr.io/libre-devops/toolbox:1`<br>`docker.io/libredevops/toolbox:1` |
 | `azure-pipelines-agent` | `5.281.1` `5` `latest`<br>`5.281.1-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | Azure Pipelines agent 5.281.1, with git, curl, jq, ShellCheck and shfmt | `ghcr.io/libre-devops/azure-pipelines-agent:5.281.1`<br>`docker.io/libredevops/azure-pipelines-agent:5.281.1` |
@@ -268,6 +268,11 @@ docker run --rm -v "$PWD:/work" ghcr.io/libre-devops/azure-terraform:1 terraform
   provider's signed release when it was pinned, and again when the image was built.
 - **Other Terraform versions** from a `.terraform-version` still download on demand; set
   `TENV_AUTO_INSTALL=false` offline and use the default.
+- **Terraform Stacks.** `terraform stacks` runs a plugin, `tfstacks`, which Terraform normally
+  downloads on first use. The image has it cached in `~/.terraform.d/stacksplugin`, so Terraform
+  only fetches a small manifest and skips the download while the manifest names the cached
+  version. Stacks always needs HCP Terraform, or your Terraform Enterprise host through
+  `TF_STACKS_HOSTNAME`: Terraform contacts it before every `terraform stacks` command.
 
 ### Ansible
 
