@@ -50,7 +50,7 @@ Docker Hub from the same digest.
 
 ## Overview
 
-Nine images, each a thin layer of pinned tools on a hardened base:
+Ten images, each a thin layer of pinned tools on a hardened base:
 
 - **`python`**: CPython and uv, with one tag for every supported CPython from 3.12 upwards.
 - **`ansible`**: ansible-core and ansible-lint in their own virtual environment, with
@@ -66,6 +66,10 @@ Nine images, each a thin layer of pinned tools on a hardened base:
 - **`terraform`**: tenv with a default Terraform, TFLint, terraform-docs and Conftest. A
   repository's `.terraform-version` wins over the default. Also as an Alpine variant
   (`-alpine` tags), about a third smaller.
+- **`azure-terraform`**: the `terraform` image with the azurerm, azapi and msgraph providers
+  (the newest three minor releases of each) in a local mirror, so `terraform init` needs no
+  registry for them, and the Terraform Stacks CLI, `tfstacks` (see
+  [azure-terraform](#azure-terraform)).
 - **`powershell`**: PowerShell LTS with PSScriptAnalyzer, Pester, Az, Microsoft.Graph and
   [LibreDevOpsHelpers](https://github.com/libre-devops/powershell-helpers).
 - **`toolbox`**: Python, the Azure CLI, Terraform and PowerShell in one image, assembled from
@@ -120,6 +124,7 @@ cosign verify ghcr.io/libre-devops/terraform:1 \
 | `ansible` | `2.22.0` `2.22` `latest`<br>`2.22.0-py3.14-YYYYMMDD` | `dhi.io/python:3.14-debian13-dev` | ansible-core 2.22.0 on Python 3.14, with ansible-lint, jmespath, netaddr, pywinrm, OpenSSH 10.6p2 and uv 0.13.7 | `ghcr.io/libre-devops/ansible:2.22.0`<br>`docker.io/libredevops/ansible:2.22.0` |
 | `ansible` | `2.16.20` `2.16`<br>`2.16.20-py3.12-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | ansible-core 2.16.20 on Python 3.12, for hosts whose only Python is 3.6 (RHEL 8): the last line that supports them. With ansible-lint, jmespath, netaddr, pywinrm, OpenSSH 10.6p2 and uv 0.13.7 | `ghcr.io/libre-devops/ansible:2.16.20`<br>`docker.io/libredevops/ansible:2.16.20` |
 | `ansible-azure` | `4.2.0` `4` `latest`<br>`4.2.0-YYYYMMDD` | `dhi.io/python:3.14-debian13-dev` | azure.azcollection 4.2.0 and its Python requirements, on ansible-core 2.22.0 and Python 3.14, with ansible-lint, OpenSSH 10.6p2 and uv 0.13.7 | `ghcr.io/libre-devops/ansible-azure:4.2.0`<br>`docker.io/libredevops/ansible-azure:4.2.0` |
+| `azure-terraform` | `1.17.1` `1.17` `1` `latest`<br>`1.17.1-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | Terraform 1.17.1 by default, TFLint 0.65.0, terraform-docs 0.24.0, Conftest 0.71.1; in a local provider mirror, azurerm 5.13.0, 5.12.0, 5.11.0, azapi 2.13.0, 2.12.0, 2.11.0 and msgraph 0.6.0, 0.5.0, 0.4.0; tfstacks 1.4.0 | `ghcr.io/libre-devops/azure-terraform:1.17.1`<br>`docker.io/libredevops/azure-terraform:1.17.1` |
 | `powershell` | `7.6.9` `7.6` `7` `lts` `latest`<br>`7.6.9-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | PowerShell 7.6.9, Az 16.5.0, Microsoft.Graph 2.41.2, Pester 6.2.0, PSScriptAnalyzer 1.25.0, LibreDevOpsHelpers 3.0.1 | `ghcr.io/libre-devops/powershell:7.6.9`<br>`docker.io/libredevops/powershell:7.6.9` |
 | `toolbox` | `1` `latest`<br>`1-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | Python 3.12 and uv 0.13.7, Azure CLI 2.92.0, ldo-cli 0.8.1, Terraform 1.17.1 by default (tenv 4.15.1), TFLint 0.65.0, terraform-docs 0.24.0, Conftest 0.71.1, PowerShell 7.6.9 with Az 16.5.0, Microsoft.Graph 2.41.2, Pester 6.2.0, PSScriptAnalyzer 1.25.0 and LibreDevOpsHelpers 3.0.1 | `ghcr.io/libre-devops/toolbox:1`<br>`docker.io/libredevops/toolbox:1` |
 | `azure-pipelines-agent` | `5.281.1` `5` `latest`<br>`5.281.1-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | Azure Pipelines agent 5.281.1, with git, curl, jq, ShellCheck and shfmt | `ghcr.io/libre-devops/azure-pipelines-agent:5.281.1`<br>`docker.io/libredevops/azure-pipelines-agent:5.281.1` |
@@ -134,6 +139,7 @@ Every image also has bash, git, curl, ca-certificates, ShellCheck 0.11.0, shfmt 
 | If you need | Use | Why |
 | --- | --- | --- |
 | One tool family in a CI job | `python`, `ansible`, `azure-cli`, `terraform` or `powershell` | Smaller pulls, smaller attack surface, fewer reasons to rebuild |
+| Terraform for Azure in an air-gapped or restricted network | `azure-terraform` | azurerm, azapi and msgraph install from a local mirror, with no registry |
 | Ansible playbooks against Azure | `ansible-azure` | The Azure collection and its many Python libraries, already installed and patched |
 | Ansible for hosts whose only Python is 3.6, such as RHEL 8 | `ansible:2.16` | ansible-core 2.17 and later cannot manage them; see [Ansible](#ansible) |
 | Self-hosted Azure Pipelines agents or GitHub Actions runners | `azure-pipelines-agent`, `github-runner` | Ephemeral by default; the `toolbox` tags carry every toolbox tool |
@@ -166,6 +172,7 @@ Every release records its digests in this README and in
 | `ansible-azure` | The current azure.azcollection, on the current `ansible` |
 | `azure-cli` | The current release, and 2.72.0 as a long-lived line for networks whose TLS inspection fails the stricter certificate checks in Python 3.13 and later |
 | `terraform` | The current Terraform 1.x as the default, on Debian and on Alpine; any other version through `.terraform-version` |
+| `azure-terraform` | The current `terraform`, with the newest three minor releases of azurerm, azapi and msgraph |
 | `powershell` | The current PowerShell LTS |
 | `toolbox` | The latest `azure-cli`, `terraform` and `powershell`, with the Azure CLI's Python |
 | `azure-pipelines-agent`, `github-runner` | The current agent release, on its own and atop `toolbox` |
@@ -236,6 +243,31 @@ steps:
       docker run --rm --user "$(id -u):0" -v "$(Build.SourcesDirectory):/work"
       ghcr.io/libre-devops/powershell:lts pwsh -File ./build.ps1
 ```
+
+### azure-terraform
+
+`terraform init` installs azurerm, azapi and msgraph from the image's own mirror, at
+`/usr/local/share/terraform/providers`, and needs no registry for them; any other provider still
+comes from the registry. The mirror holds the newest patch of each of the newest three minor
+releases of each provider, each at least three days old, and the image tables above list
+them. They move forward as new releases appear.
+
+```sh
+docker run --rm -v "$PWD:/work" ghcr.io/libre-devops/azure-terraform:1 terraform init
+```
+
+- **Constraints.** A configuration whose version constraints allow one of the mirrored
+  versions, such as `~> 5.12` or `>= 5.0`, installs offline. One that pins a version the mirror
+  lacks needs the registry.
+- **Online, and a version the mirror lacks.** Terraform cannot fall back from the mirror to the
+  registry by itself, so switch to the registry configuration:
+  `TF_CLI_CONFIG_FILE=/usr/local/share/terraform/registry.tfrc`.
+- **Lock files.** The mirror holds the release zips themselves, so a `.terraform.lock.hcl`
+  made online matches them. Terraform reports mirrored providers as "unauthenticated" because
+  it does not check signatures on local files: each zip's checksum was verified against the
+  provider's signed release when it was pinned, and again when the image was built.
+- **Other Terraform versions** from a `.terraform-version` still download on demand; set
+  `TENV_AUTO_INSTALL=false` offline and use the default.
 
 ### Ansible
 
@@ -367,6 +399,7 @@ Things to know:
 | `/usr/local/share/powershell/Modules` | Pinned PowerShell modules, for all users | root |
 | `/home/app/.tenv` | tenv's Terraform installs (`TENV_ROOT`) | `app`, and any uid in group 0 |
 | `/opt/ansible` | Ansible's virtual environment (`ansible`, `ansible-azure`) | root |
+| `/usr/local/share/terraform` | The provider mirror and the two CLI configurations (`azure-terraform`) | root |
 | `/usr/share/ansible/collections` | Collections for every user (`ansible-azure`) | root |
 | `/opt/azure-pipelines-agent`, `/opt/actions-runner` | The agents, their registration and their work (`azure-pipelines-agent`, `github-runner`) | `app`, and any uid in group 0 |
 
@@ -381,6 +414,7 @@ Set by the images; override any of them with `-e` or your CI system's environmen
 | `NODE_EXTRA_CA_CERTS` | `/etc/ssl/certs/ca-certificates.crt` | all | Node.js, which the CI agents run tasks with, trusts the system store too |
 | `UV_NATIVE_TLS` | `true` | all | uv uses the system trust store rather than its own |
 | `LANG` | `C.UTF-8` | `ansible`, `ansible-azure` | ansible-core refuses to run without a UTF-8 locale |
+| `TF_CLI_CONFIG_FILE` | `/usr/local/share/terraform/airgapped.tfrc` | `azure-terraform` | Mirrored providers install from the mirror; `registry.tfrc` uses the registry for everything |
 | `PYTHONUNBUFFERED` | `1` | `python`, `azure-cli`, `toolbox` | Unbuffered output in CI logs |
 | `AZURE_CORE_COLLECT_TELEMETRY` | `no` | `azure-cli`, `toolbox` | No Azure CLI telemetry |
 | `TENV_ROOT` | `/home/app/.tenv` | `terraform`, `toolbox` | Where tenv keeps Terraform versions |
@@ -613,6 +647,7 @@ request, so either edit stays safe. If a hardened variant you need does not exis
 | An `-alpine` image fails as an Azure Pipelines container job | The agent's Node.js needs glibc, and Alpine uses musl | Use the Debian tags (the ones without `-alpine`) |
 | `Import-Module Az` is slow | Az loads every service module | Import only what you use, for example `Import-Module Az.Accounts, Az.Resources` |
 | `Import-Module Microsoft.Graph` is slow | It loads about forty modules | Import only what you use, for example `Import-Module Microsoft.Graph.Users` |
+| `azure-terraform`: `Failed to query available provider packages` or `no available releases match` for azurerm, azapi or msgraph | The constraints exclude every mirrored version | Loosen the constraint, or use the registry: `TF_CLI_CONFIG_FILE=/usr/local/share/terraform/registry.tfrc` |
 | Ansible fails on a RHEL 8 host with a Python version error | ansible-core 2.17 and later need Python 3.7 or newer on the host | Use `ansible:2.16` for those hosts |
 | A self-hosted runner gets no jobs | GitHub stops sending jobs to a runner 30 days after a newer release | Pull the moving tag again; new runner versions are released automatically |
 
@@ -657,6 +692,7 @@ it. The CI matrix, tags, tests and README follow from `versions.yml`.
 | Fixed versions of vulnerable Go dependencies | `versions.lock.json` | The Pins workflow, on those branches and every day |
 | Hash-locked Python dependencies | `images/locks/` | The Pins workflow, on those branches and every day |
 | Base image digests | `versions.yml` | The Pins workflow, every day, as a pull request that merges itself once Build passes |
+| Terraform providers in `azure-terraform` | `versions.yml` (`terraform_providers`), and their SHA-256 in `versions.lock.json` | The Pins workflow, every day: the newest three minor releases, each pinned once its signed checksums verify |
 | GitHub Actions | the workflows, by commit SHA | Renovate |
 
 A download pin, once written, is never re-fetched: an upstream asset that changes after it was

@@ -13,6 +13,9 @@
 #               Go checksum database) with the pinned Go toolchain, after
 #               raising every dependency with a known vulnerability to its fixed
 #               version.
+#   terraform-providers
+#               The Terraform providers azure-terraform mirrors, each checked
+#               against its pinned SHA-256.
 #   openssh     The OpenSSH client, built from its latest release (see
 #               images/common/build-openssh.sh for why), for the ansible images.
 #   base        The base image, upgraded, with the shared packages, the app
@@ -21,9 +24,9 @@
 #   python, ansible, ansible-azure, azure-cli, terraform, powershell
 #               The images, each on base.
 #   toolbox     Everything, assembled from the stages above.
-#   azure-pipelines-agent, github-runner
-#               Self-hosted CI agents, on the stage named by ATOP: base, or
-#               toolbox for their toolbox flavours.
+#   azure-terraform, azure-pipelines-agent, github-runner
+#               On the stage named by ATOP: terraform for azure-terraform, and
+#               base, or toolbox for their toolbox flavours, for the CI agents.
 
 ARG BASE_IMAGE
 ARG ATOP=base
@@ -40,8 +43,9 @@ ARG POWERSHELL_ASSET=""
 ARG AZURE_AZCOLLECTION_ASSET=""
 ARG AZURE_PIPELINES_AGENT_ASSET=""
 ARG GITHUB_RUNNER_ASSET=""
+ARG TFSTACKS_ASSET=""
 RUN --mount=type=bind,source=images,target=/src \
-    sh /src/common/os-packages.sh ca-certificates curl tar gzip xz \
+    sh /src/common/os-packages.sh ca-certificates curl tar gzip xz unzip \
     && sh /src/common/fetch-all.sh /fetched
 
 FROM ${BASE_IMAGE} AS go
@@ -59,6 +63,14 @@ RUN --mount=type=bind,source=images,target=/src \
     sh /src/common/os-packages.sh ca-certificates curl tar gzip git \
     && sh /src/common/fetch-tool.sh / go "${GO_ASSET}" \
     && sh /src/common/go-build-all.sh /built
+
+FROM ${BASE_IMAGE} AS terraform-providers
+# hadolint ignore=DL3002
+USER 0
+ARG TERRAFORM_PROVIDERS=""
+RUN --mount=type=bind,source=images,target=/src \
+    sh /src/common/os-packages.sh ca-certificates curl \
+    && sh /src/terraform/fetch-providers.sh /mirror
 
 FROM ${BASE_IMAGE} AS openssh
 # hadolint ignore=DL3002
@@ -207,6 +219,23 @@ RUN --mount=type=bind,source=images,target=/src \
     && ln -sf /opt/microsoft/powershell/7/pwsh /usr/local/bin/pwsh \
     && sh /src/common/finalise.sh
 ENV HOME=/home/app
+USER 10001:10001
+WORKDIR /work
+CMD ["bash"]
+
+# A filesystem mirror of the pinned providers, and two Terraform CLI
+# configurations: air-gapped (the default: the mirrored providers come only
+# from the mirror, everything else from the registry) and registry.
+FROM ${ATOP} AS azure-terraform
+# hadolint ignore=DL3002
+USER 0
+COPY --from=terraform-providers /mirror/ /usr/local/share/terraform/providers/
+COPY --from=fetch /fetched/tfstacks/ /
+RUN --mount=type=bind,source=images,target=/src \
+    sh /src/terraform/cli-configs.sh /usr/local/share/terraform \
+    && sh /src/common/finalise.sh
+ENV HOME=/home/app \
+    TF_CLI_CONFIG_FILE=/usr/local/share/terraform/airgapped.tfrc
 USER 10001:10001
 WORKDIR /work
 CMD ["bash"]

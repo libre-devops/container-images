@@ -128,9 +128,22 @@ GALAXY_COLLECTIONS = {"azure-azcollection": "azure.azcollection"}
 # (Damien Miller's), named here by fingerprint.
 OPENSSH_CDN = "https://cdn.openbsd.org/pub/OpenBSD/OpenSSH"
 OPENSSH_RELEASE_KEY = "7168B983815A5EEF59A4ADFD2A3F414E736060BA"
+# HashiCorp signs its releases' SHA256SUMS (Terraform providers in the
+# hashicorp namespace, tfstacks) with this key. Microsoft signs azapi and
+# msgraph with its registry partner key. A provider is pinned only once the
+# checksums for its release verify against its namespace's key here.
+HASHICORP_KEY = "C874011F0AB405110D02105534365D9472D7468F"
+MICROSOFT_PROVIDER_KEY = "404BCB5E66712DE36720E0C36F0B91BDE98478CF"
+PROVIDER_KEYS = {"hashicorp": HASHICORP_KEY, "azure": MICROSOFT_PROVIDER_KEY, "microsoft": MICROSOFT_PROVIDER_KEY}
+TERRAFORM_REGISTRY = "https://registry.terraform.io"
+PROVIDER_PLATFORMS = {"amd64": ("linux", "amd64"), "arm64": ("linux", "arm64")}
+# A provider release joins the mirror once it is this many days old, as
+# Renovate waits before taking a new tool.
+PROVIDER_MIN_AGE_DAYS = 3
 OTHER_DOWNLOADS: dict[str, tuple[str, ...]] = {
     "go": GO_ARCHES,
     "openssh": ("any",),
+    "tfstacks": GO_ARCHES,
     "azure-pipelines-agent": tuple(AZURE_PIPELINES_AGENT),
     **{name: ("any",) for name in GALAXY_COLLECTIONS},
 }
@@ -240,6 +253,9 @@ class Config:
         self.common: list[str] = data["common"]
         self.ci: list[str] = data.get("ci") or []
         self.images: dict[str, dict] = data["images"]
+        self.terraform_providers: dict[str, list[str]] = {
+            source: [str(v) for v in versions] for source, versions in (data.get("terraform_providers") or {}).items()
+        }
 
     @classmethod
     def load(cls) -> Config:
@@ -362,6 +378,10 @@ class Config:
             )
         return locks
 
+    def providers(self, entry: Entry) -> dict[str, list[str]]:
+        """The Terraform providers an image version carries in its mirror."""
+        return self.terraform_providers if self.images[entry.image].get("provider_mirror") else {}
+
     def tests(self, entry: Entry) -> list[str]:
         suites = list(self.images[entry.image].get("tests") or [entry.image])
         for c in self.components(entry):
@@ -479,7 +499,7 @@ def sha256_of_url(url: str) -> str:
 
 def load_lock() -> dict:
     lock = json.loads(LOCK.read_text()) if LOCK.exists() else {}
-    for section in ("tools", "go", "python"):
+    for section in ("tools", "go", "python", "providers"):
         lock.setdefault(section, {})
     return lock
 
@@ -534,30 +554,122 @@ def pin_galaxy_collection(tool: str, version: str) -> dict:
     return {"any": {"url": meta["download_url"], "sha256": meta["artifact"]["sha256"]}}
 
 
+def fetch_bytes(url: str) -> bytes:
+    with http(url, timeout=300) as response:
+        return response.read()
+
+
+def gpg_verified(data: bytes, signature: bytes, keys: bytes, fingerprint: str) -> bool:
+    """Whether a detached signature over data verifies, made by the key with
+    this primary fingerprint (from among the armoured keys given)."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        work = Path(tmp)
+        home = work / "gnupg"
+        home.mkdir(mode=0o700)
+        (work / "keys.asc").write_bytes(keys)
+        (work / "data").write_bytes(data)
+        (work / "data.sig").write_bytes(signature)
+        env = {**os.environ, "GNUPGHOME": str(home)}
+        subprocess.run(["gpg", "--batch", "--quiet", "--import", str(work / "keys.asc")], env=env, check=True, capture_output=True)
+        result = subprocess.run(
+            ["gpg", "--batch", "--status-fd", "1", "--verify", str(work / "data.sig"), str(work / "data")],
+            env=env, capture_output=True, text=True,
+        )  # fmt: skip
+    return bool(re.search(rf"^\[GNUPG:\] VALIDSIG .* {fingerprint}$", result.stdout, flags=re.M))
+
+
 def pin_openssh(version: str) -> dict:
     """The OpenSSH portable release tarball, pinned by SHA-256 once its PGP
     signature verifies against OPENSSH_RELEASE_KEY."""
-    import tempfile
-
     url = f"{OPENSSH_CDN}/portable/openssh-{version}.tar.gz"
-    with tempfile.TemporaryDirectory() as tmp:
-        work = Path(tmp)
-        for name, source in (("key.asc", f"{OPENSSH_CDN}/RELEASE_KEY.asc"), ("release.tar.gz", url), ("release.asc", f"{url}.asc")):
-            with http(source, timeout=300) as response:
-                (work / name).write_bytes(response.read())
-        home = work / "gnupg"
-        home.mkdir(mode=0o700)
-        env = {**os.environ, "GNUPGHOME": str(home)}
-        subprocess.run(["gpg", "--batch", "--quiet", "--import", str(work / "key.asc")], env=env, check=True, capture_output=True)
-        result = subprocess.run(
-            ["gpg", "--batch", "--status-fd", "1", "--verify", str(work / "release.asc"), str(work / "release.tar.gz")],
-            env=env, capture_output=True, text=True,
-        )  # fmt: skip
-        if not re.search(rf"^\[GNUPG:\] VALIDSIG .* {OPENSSH_RELEASE_KEY}$", result.stdout, flags=re.M):
-            raise Failure(f"openssh-{version}.tar.gz is not signed by the OpenSSH release key {OPENSSH_RELEASE_KEY}")
-        digest = hashlib.sha256((work / "release.tar.gz").read_bytes()).hexdigest()
+    tarball = fetch_bytes(url)
+    if not gpg_verified(tarball, fetch_bytes(f"{url}.asc"), fetch_bytes(f"{OPENSSH_CDN}/RELEASE_KEY.asc"), OPENSSH_RELEASE_KEY):
+        raise Failure(f"openssh-{version}.tar.gz is not signed by the OpenSSH release key {OPENSSH_RELEASE_KEY}")
+    digest = hashlib.sha256(tarball).hexdigest()
     note(f"  openssh {version}: signature verified, {digest}")
     return {"any": {"url": url, "sha256": digest}}
+
+
+def sums_entry(sums: bytes, filename: str) -> str:
+    for line in sums.decode().splitlines():
+        digest, _, name = line.partition("  ")
+        if name.strip() == filename:
+            return digest
+    raise Failure(f"no checksum for {filename}")
+
+
+def pin_tfstacks(version: str) -> dict:
+    """tfstacks from releases.hashicorp.com, once its SHA256SUMS verify against
+    HashiCorp's key."""
+    base = f"https://releases.hashicorp.com/tfstacks/{version}"
+    sums = fetch_bytes(f"{base}/tfstacks_{version}_SHA256SUMS")
+    key = fetch_bytes("https://www.hashicorp.com/.well-known/pgp-key.txt")
+    if not gpg_verified(sums, fetch_bytes(f"{base}/tfstacks_{version}_SHA256SUMS.sig"), key, HASHICORP_KEY):
+        raise Failure(f"the checksums of tfstacks {version} are not signed by HashiCorp's key {HASHICORP_KEY}")
+    pinned = {}
+    for arch in GO_ARCHES:
+        filename = f"tfstacks_{version}_linux_{arch}.zip"
+        pinned[arch] = {"url": f"{base}/{filename}", "sha256": sums_entry(sums, filename)}
+        note(f"  tfstacks {version} {arch}: {pinned[arch]['sha256']}")
+    return pinned
+
+
+def pin_provider(source: str, version: str) -> dict:
+    """A Terraform provider release for each platform, from the registry, once
+    its SHA256SUMS verify against the key PROVIDER_KEYS names for its namespace."""
+    namespace = source.split("/")[0]
+    fingerprint = PROVIDER_KEYS.get(namespace)
+    if not fingerprint:
+        raise Failure(f"no signing key is pinned for the {namespace} namespace (PROVIDER_KEYS)")
+    pinned: dict[str, dict] = {}
+    verified: dict[str, bytes] = {}
+    for arch, (os_name, cpu) in PROVIDER_PLATFORMS.items():
+        meta = http_json(f"{TERRAFORM_REGISTRY}/v1/providers/{source}/{version}/download/{os_name}/{cpu}")
+        if meta["shasums_url"] not in verified:
+            sums = fetch_bytes(meta["shasums_url"])
+            keys = "\n".join(k["ascii_armor"] for k in meta["signing_keys"]["gpg_public_keys"]).encode()
+            if not gpg_verified(sums, fetch_bytes(meta["shasums_signature_url"]), keys, fingerprint):
+                raise Failure(f"the checksums of {source} {version} are not signed by key {fingerprint}")
+            verified[meta["shasums_url"]] = sums
+        digest = sums_entry(verified[meta["shasums_url"]], meta["filename"])
+        if digest != meta["shasum"]:
+            raise Failure(f"{source} {version} {arch}: the registry's checksum differs from the signed one")
+        pinned[arch] = {"url": meta["download_url"], "sha256": digest}
+        note(f"  {source} {version} {arch}: {digest}")
+    return pinned
+
+
+def newest_provider_minors(source: str, count: int) -> list[str]:
+    """The newest patch of each of the newest `count` minor releases of a
+    provider, among stable releases for every platform that are at least
+    PROVIDER_MIN_AGE_DAYS old."""
+    import datetime
+
+    listing = http_json(f"{TERRAFORM_REGISTRY}/v1/providers/{source}/versions")["versions"]
+    wanted = {f"{os_name}/{cpu}" for os_name, cpu in PROVIDER_PLATFORMS.values()}
+    candidates = sorted(
+        (
+            Version(v["version"])
+            for v in listing
+            if re.fullmatch(r"\d+\.\d+\.\d+", v["version"])
+            and wanted <= {f"{p['os']}/{p['arch']}" for p in v.get("platforms", [])}
+        ),
+        reverse=True,
+    )
+    cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=PROVIDER_MIN_AGE_DAYS)
+    chosen: dict[tuple[int, int], Version] = {}
+    for v in candidates:
+        if len(chosen) == count:
+            break
+        if (v.major, v.minor) in chosen:
+            continue
+        published = http_json(f"{TERRAFORM_REGISTRY}/v1/providers/{source}/{v}")["published_at"]
+        if datetime.datetime.fromisoformat(published.replace("Z", "+00:00")) > cutoff:
+            continue
+        chosen[(v.major, v.minor)] = v
+    return [str(v) for v in chosen.values()]
 
 
 def pin_download(tool: str, version: str, token: str | None) -> dict:
@@ -565,6 +677,8 @@ def pin_download(tool: str, version: str, token: str | None) -> dict:
         return pin_go_toolchain(version)
     if tool == "openssh":
         return pin_openssh(version)
+    if tool == "tfstacks":
+        return pin_tfstacks(version)
     if tool == "azure-pipelines-agent":
         return pin_azure_pipelines_agent(version, token)
     if tool in GALAXY_COLLECTIONS:
@@ -868,6 +982,7 @@ def cmd_lock(cfg: Config, check: bool) -> None:
     needed = cfg.all_downloads()
     go_needed = cfg.all_go_builds()
     py_needed = cfg.all_python_locks()
+    providers_needed = {(src, v) for e in cfg.entries() for src, versions in cfg.providers(e).items() for v in versions}
 
     def pinned(tool: str, version: str) -> bool:
         arches = set(OTHER_DOWNLOADS[tool]) if tool in OTHER_DOWNLOADS else set(DOWNLOADS[tool][3])
@@ -883,6 +998,12 @@ def cmd_lock(cfg: Config, check: bool) -> None:
         stale = [f"{t} {v}" for t, vs in lock["tools"].items() for v in vs if (t, v) not in needed]
         stale += [f"Go build {t} {v}" for t, vs in lock["go"].items() for v in vs if (t, v) not in go_needed]
         stale += [f"Python lock {k}" for k in lock["python"] if k not in py_needed]
+        problems += [
+            f"provider not pinned: {src} {v}"
+            for src, v in sorted(providers_needed)
+            if set(lock["providers"].get(src, {}).get(v, {})) != set(PROVIDER_PLATFORMS)
+        ]
+        stale += [f"provider {src} {v}" for src, vs in lock["providers"].items() for v in vs if (src, v) not in providers_needed]
         problems += [f"no longer used: {s}" for s in stale]
         if problems:
             raise Failure(
@@ -908,6 +1029,18 @@ def cmd_lock(cfg: Config, check: bool) -> None:
                     )
             existing = {**fresh, **existing}
         tools.setdefault(tool, {})[version] = existing
+
+    providers: dict[str, dict] = {}
+    for src, version in sorted(providers_needed):
+        existing = lock["providers"].get(src, {}).get(version) or {}
+        if set(existing) != set(PROVIDER_PLATFORMS):
+            note(f"pinning {src} {version}")
+            fresh = pin_provider(src, version)
+            for arch, old in existing.items():
+                if arch in fresh and fresh[arch]["sha256"] != old["sha256"]:
+                    raise Failure(f"{src} {version} {arch} changed upstream since it was pinned")
+            existing = {**fresh, **existing}
+        providers.setdefault(src, {})[version] = existing
 
     go_version = cfg.tools["go"]
     toolchain_fixes, _ = osv_fixes("Go", [("stdlib", go_version)])
@@ -938,6 +1071,7 @@ def cmd_lock(cfg: Config, check: bool) -> None:
                 "tools": tools,
                 "go": go,
                 "python": python,
+                "providers": providers,
             },
             indent=2,
             sort_keys=True,
@@ -1047,8 +1181,9 @@ def resolve_digest(ref: str) -> tuple[str, set[str]]:
 
 
 def cmd_pin(cfg: Config) -> None:
-    """Re-resolve every tag under bases and portability to its digest, editing
-    versions.yml in place so its comments survive."""
+    """Re-resolve every tag under bases and portability to its digest, and the
+    versions of every provider under terraform_providers, editing versions.yml
+    in place so its comments survive."""
     lines = VERSIONS.read_text().splitlines(keepends=True)
     section = None
     published = {e.base_key for e in cfg.entries()}
@@ -1056,6 +1191,16 @@ def cmd_pin(cfg: Config) -> None:
         top = re.match(r"^([A-Za-z][\w-]*):", line)
         if top:
             section = top.group(1)
+            continue
+        if section == "terraform_providers":
+            match = re.match(r"^(\s+)([\w.-]+/[\w.-]+):\s*\[(.*)\]\s*$", line)
+            if match:
+                indent, source, current = match.groups()
+                count = len([v for v in current.split(",") if v.strip()]) or 3
+                versions = newest_provider_minors(source, count)
+                new = ", ".join(f'"{v}"' for v in versions)
+                note(f"{source}: {', '.join(versions)} ({'unchanged' if new == current.strip() else 'updated'})")
+                lines[i] = f"{indent}{source}: [{new}]\n"
             continue
         if section not in ("bases", "portability"):
             continue
@@ -1337,6 +1482,9 @@ def cmd_validate(cfg: Config) -> None:
                 if tag in seen:
                     problems.append(f"{name}: tag '{tag}' is claimed by {seen[tag]} and {e.key}")
                 seen[tag] = e.key
+    for src in cfg.terraform_providers:
+        if src.split("/")[0] not in PROVIDER_KEYS:
+            problems.append(f"terraform_providers: no signing key is pinned for {src} (PROVIDER_KEYS in scripts/images.py)")
     for section, refs in (("bases", cfg.bases), ("portability", cfg.portability)):
         for key, ref in refs.items():
             if not DIGEST.search(ref):
@@ -1381,6 +1529,16 @@ def build_args(cfg: Config, entry: Entry, base: str | None = None) -> dict[str, 
         args[arg] = spec["file"].removeprefix("images/")
     if packages := cfg.os_packages(entry):
         args["OS_PACKAGES"] = " ".join(packages)
+    if providers := cfg.providers(entry):
+        items = []
+        for src, versions in providers.items():
+            for v in versions:
+                try:
+                    assets = lock["providers"][src][v]
+                except KeyError:
+                    raise Failure(f"provider {src} {v} is not pinned; run `just lock`") from None
+                items += [f"{arch}|{src}|{v}|{a['url']}|{a['sha256']}" for arch, a in sorted(assets.items())]
+        args["TERRAFORM_PROVIDERS"] = " ".join(items)
     return args
 
 
@@ -1393,6 +1551,8 @@ def test_env(cfg: Config, entry: Entry) -> dict[str, str]:
             env[f"EXPECT_{arg_name(c.image)}"] = c.version
     for tool in cfg.tools_for(entry):
         env[f"EXPECT_{arg_name(tool)}"] = cfg.tools[tool]
+    if providers := cfg.providers(entry):
+        env["EXPECT_TERRAFORM_PROVIDERS"] = " ".join(f"{src}={','.join(vs)}" for src, vs in providers.items())
     return env
 
 
@@ -1489,6 +1649,8 @@ def contents(cfg: Config, entry: Entry) -> str:
     for c in cfg.components(entry):
         values[c.image.replace("-", "_")] = c.version
     values.update(version=entry.version, python=cfg.python_minor(entry) or "")
+    for src, versions in cfg.providers(entry).items():
+        values[src.split("/")[1]] = ", ".join(versions)
     return (entry.contents or cfg.images[entry.image]["contents"]).format(**values)
 
 

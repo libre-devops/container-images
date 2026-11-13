@@ -85,6 +85,9 @@ tools:
   tenv: 4.15.1
   # renovate: datasource=github-releases depName=terraform-linters/tflint extractVersion=^v(?<version>.+)$
   tflint: 0.65.0
+  # The Terraform Stacks CLI, in azure-terraform.
+  # renovate: datasource=custom.hashicorp-releases depName=tfstacks
+  tfstacks: 1.4.0
   # renovate: datasource=github-releases depName=terraform-docs/terraform-docs extractVersion=^v(?<version>.+)$
   terraform-docs: 0.24.0
   # renovate: datasource=github-releases depName=open-policy-agent/conftest extractVersion=^v(?<version>.+)$
@@ -120,6 +123,17 @@ tools:
   zizmor: 1.32.0
   # renovate: datasource=github-releases depName=rhysd/actionlint extractVersion=^v(?<version>.+)$
   actionlint: 1.7.12
+
+# Terraform providers that azure-terraform carries in a local mirror, so that
+# terraform init needs no registry: the newest patch of each of the newest
+# three minor releases (as many as listed), each at least three days old.
+# `just pin` re-resolves them, daily through the Pins workflow, so nobody edits
+# these lists; `just lock` pins every zip once its release's signed checksums
+# verify against the key scripts/images.py holds for its namespace.
+terraform_providers:
+  hashicorp/azurerm: ["5.13.0", "5.12.0", "5.11.0"]
+  azure/azapi: ["2.13.0", "2.12.0", "2.11.0"]
+  microsoft/msgraph: ["0.6.0", "0.5.0", "0.4.0"]
 
 # In every image, on top of bash, git, curl and ca-certificates.
 common: [shellcheck, shfmt, jq]
@@ -211,6 +225,15 @@ images:
     versions:
       # renovate: datasource=galaxy-collection depName=azure.azcollection
       - { version: "4.2.0", base: python-3.14, latest: true, moving: [major] }
+
+  azure-terraform:
+    description: The terraform image with the azurerm, azapi and msgraph providers in a local mirror, for terraform init without the registry, and tfstacks
+    contents: "Terraform {version} by default, TFLint {tflint}, terraform-docs {terraform_docs}, Conftest {conftest}; in a local provider mirror, azurerm {azurerm}, azapi {azapi} and msgraph {msgraph}; tfstacks {tfstacks}"
+    tools: [tfstacks]
+    provider_mirror: true
+    versions:
+      # renovate: datasource=github-releases depName=hashicorp/terraform extractVersion=^v(?<version>.+)$
+      - { version: "1.17.1", base: debian, atop: terraform, latest: true, moving: [minor, major] }
 
   powershell:
     description: PowerShell LTS with PSScriptAnalyzer, Pester, Az, Microsoft.Graph and LibreDevOpsHelpers
