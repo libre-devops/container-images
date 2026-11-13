@@ -231,7 +231,8 @@ images:
     description: A self-hosted Azure Pipelines agent that registers itself from environment variables
     contents: Azure Pipelines agent {version}, with git, curl, jq, ShellCheck and shfmt
     download: azure-pipelines-agent
-    os_packages: [icu, openssl, zlib, libstdc++, krb5]
+    # tar and gzip: the agents unpack themselves, and jobs (actions/cache, checkout) need them.
+    os_packages: [icu, openssl, zlib, libstdc++, krb5, tar, gzip]
     versions:
       # renovate: datasource=github-releases depName=microsoft/azure-pipelines-agent extractVersion=^v(?<version>.+)$
       - { version: "5.281.1", base: debian, latest: true, moving: [major] }
@@ -242,7 +243,8 @@ images:
     description: A self-hosted GitHub Actions runner that registers itself from environment variables
     contents: GitHub Actions runner {version}, with git, curl, jq, ShellCheck and shfmt
     download: github-runner
-    os_packages: [icu, openssl, zlib, libstdc++, krb5]
+    # tar and gzip: the agents unpack themselves, and jobs (actions/cache, checkout) need them.
+    os_packages: [icu, openssl, zlib, libstdc++, krb5, tar, gzip]
     # GitHub publishes no musl build of the runner, so not Alpine.
     portability: [rhel, rhel-minimal, wolfi]
     versions:
