@@ -338,7 +338,7 @@ flowchart LR
     verify --> tag["Tag GHCR and Docker Hub from one manifest"] --> sign["Check digests match, sign with cosign"]
   end
   subgraph daily["Every day"]
-    pins["Pins: base digests, OSV patches, Python locks"] --> prs["Pull request, built and tested"]
+    pins["Pins: base digests, OSV patches, Python locks"] --> prs["Pull request, built, tested, merged"]
     scan["Scan every published image"] --> tab["Security tab"]
   end
   gate --> push
@@ -369,8 +369,9 @@ flowchart LR
   reports every finding in the repository's Security tab, and starts a rebuild if a published
   image fails the gate.
 - **Fixes as soon as they exist.** Every day, the Pins workflow re-resolves the base images,
-  re-audits every pinned dependency and opens a pull request with any fix. Renovate raises
-  security updates immediately, outside its weekly schedule.
+  re-audits every pinned dependency and opens a pull request with any fix, which merges itself
+  and releases once Build passes. Renovate raises security updates immediately, outside its
+  weekly schedule, and merges any update but a major one once its checks pass.
 
 ### Vulnerability handling policy
 
@@ -476,9 +477,9 @@ You need Docker or Podman, [just](https://just.systems) and [uv](https://docs.as
 
 | Workflow | Runs on | Does | Publishes |
 | --- | --- | --- | --- |
-| [Build](./.github/workflows/build.yml) | Every pull request; started by Pins and Release | Check, build every version for both platforms, smoke test, scan; portability builds | No |
-| [Release](./.github/workflows/release.yml) | Merges to `main`, Mondays 03:00 UTC, on demand, and Scan | Build once per platform, test and scan the pushed digest, tag both registries, sign, open a pull request with the new digests | Yes |
-| [Pins](./.github/workflows/pins.yml) | Pull requests that change `versions.yml`; daily 02:00 UTC | Repin and patch on the branch and re-run Build; daily, refresh base digests and patches as a pull request | No |
+| [Build](./.github/workflows/build.yml) | Every pull request; started by Pins and Release | Check, build every version for both platforms, smoke test, scan; portability builds; merge the pull requests Pins and Release open, once they pass | No |
+| [Release](./.github/workflows/release.yml) | Merges to `main` (Build starts it after merging the pins refresh), Mondays 03:00 UTC, on demand, and Scan | Build once per platform, test and scan the pushed digest, tag both registries, sign, open a pull request with the new digests | Yes |
+| [Pins](./.github/workflows/pins.yml) | Pull requests that change `versions.yml`; daily 02:00 UTC | Repin and patch on the branch and re-run Build; daily, refresh base digests and patches as a pull request, and re-run Build on it | No |
 | [Scan](./.github/workflows/scan.yml) | Daily 06:00 UTC | Rescan every published image, report to the Security tab, rebuild if needed | No |
 
 ### Adding a version
@@ -495,7 +496,7 @@ it. The CI matrix, tags, tests and README follow from `versions.yml`.
 | SHA-256 of every download, per platform | `versions.lock.json` | The Pins workflow, on every pull request branch in this repository that changes `versions.yml` |
 | Fixed versions of vulnerable Go dependencies | `versions.lock.json` | The Pins workflow, on those branches and every day |
 | Hash-locked Python dependencies | `images/locks/` | The Pins workflow, on those branches and every day |
-| Base image digests | `versions.yml` | The Pins workflow, every day, as a pull request |
+| Base image digests | `versions.yml` | The Pins workflow, every day, as a pull request that merges itself once Build passes |
 | GitHub Actions | the workflows, by commit SHA | Renovate |
 
 A download pin, once written, is never re-fetched: an upstream asset that changes after it was

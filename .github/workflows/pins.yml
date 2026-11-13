@@ -12,7 +12,9 @@ name: Pins
 # Every day, and on demand: re-resolves every base image tag to its current
 # digest, re-audits every pinned dependency against OSV, then repins and
 # regenerates the same way, on a pull request of its own. Daily, so that a
-# fix lands as soon as it exists.
+# fix lands as soon as it exists. Build runs on that pull request every day,
+# changed or not, so a run lost to a network error is retried; once Build
+# passes it merges the pull request and starts Release.
 
 on:
   pull_request:
@@ -110,9 +112,10 @@ jobs:
           body: |
             Daily refresh: every base image tag in `versions.yml` re-resolved to its current
             digest, and every pinned dependency re-audited against OSV, with any newly fixed
-            vulnerability patched. Merge once the Build workflow passes; the merge releases.
+            vulnerability patched. Build runs on this every day; once it passes, it merges
+            this pull request and starts Release. Nothing here needs a person.
       - name: Start Build on the pull request
-        if: steps.pr.outputs.pull-request-operation == 'created' || steps.pr.outputs.pull-request-operation == 'updated'
+        if: steps.pr.outputs.pull-request-number != '' && steps.pr.outputs.pull-request-operation != 'closed'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run build.yml --repo "$GITHUB_REPOSITORY" --ref pins/refresh

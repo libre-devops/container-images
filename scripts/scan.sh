@@ -41,8 +41,22 @@ if [ -n "$image" ]; then
 	vex+=(--vex "$work/base.openvex.json")
 fi
 
+# The database mirrors fail now and then, and a failed download must not fail
+# a build: fetch it first, with retries, then scan without updating it.
+for attempt in 1 2 3 4; do
+	if trivy image --quiet --download-db-only; then
+		break
+	fi
+	if [ "$attempt" -eq 4 ]; then
+		echo "scan: cannot download the vulnerability database" >&2
+		exit 1
+	fi
+	echo "scan: the vulnerability database download failed, retrying in $((attempt * 20))s" >&2
+	sleep $((attempt * 20))
+done
+
 report=${SCAN_REPORT:-$work/report.json}
-trivy image --quiet --scanners vuln --show-suppressed --ignorefile .trivyignore.yaml "${vex[@]}" \
+trivy image --quiet --skip-db-update --scanners vuln --show-suppressed --ignorefile .trivyignore.yaml "${vex[@]}" \
 	--format json --output "$report" "${target[@]}"
 trivy convert --quiet --format table --severity HIGH,CRITICAL "$report"
 

@@ -48,6 +48,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -343,13 +344,38 @@ def python_lock_spec(name: str, requirement: str, version: str, python: str, exc
 
 # HTTP helpers ------------------------------------------------------------------
 
+# Answers that mean "try again shortly": rate limits and server-side failures.
+RETRY_STATUSES = {429, 500, 502, 503, 504}
+
+
+def urlopen(request: urllib.request.Request, timeout: int = 60, attempts: int = 4):
+    """urllib.request.urlopen, retried with backoff when the connection drops,
+    times out, or the server answers with a status in RETRY_STATUSES. Any other
+    HTTP error is raised at once, for the caller to handle."""
+    for attempt in range(1, attempts + 1):
+        try:
+            return urllib.request.urlopen(request, timeout=timeout)
+        except urllib.error.HTTPError as error:
+            if error.code not in RETRY_STATUSES or attempt == attempts:
+                raise
+            reason = f"HTTP {error.code}"
+        except OSError as error:  # URLError, a reset connection, a timeout
+            if attempt == attempts:
+                raise
+            reason = str(getattr(error, "reason", error))
+        delay = 5 * 2 ** (attempt - 1)
+        where = urllib.parse.urlsplit(request.full_url)
+        print(f"{where.netloc}{where.path}: {reason}, retrying in {delay}s", file=sys.stderr)
+        time.sleep(delay)
+    raise AssertionError("unreachable")
+
 
 def http(url: str, data: dict | None = None, headers: dict[str, str] | None = None, timeout: int = 60):
     body = json.dumps(data).encode() if data is not None else None
     request = urllib.request.Request(url, data=body, headers={"User-Agent": USER_AGENT, **(headers or {})})
     if body is not None:
         request.add_header("Content-Type", "application/json")
-    return urllib.request.urlopen(request, timeout=timeout)
+    return urlopen(request, timeout=timeout)
 
 
 def http_json(url: str, data: dict | None = None, headers: dict[str, str] | None = None):
@@ -823,7 +849,7 @@ def registry_get(host: str, repo: str, path: str, accept: str) -> bytes:
     url = f"https://{api}/v2/{repo}/{path}"
     request = urllib.request.Request(url, headers={"Accept": accept, "User-Agent": USER_AGENT})
     try:
-        with urllib.request.urlopen(request, timeout=60) as response:
+        with urlopen(request) as response:
             return response.read()
     except urllib.error.HTTPError as error:
         if error.code != 401:
@@ -839,7 +865,7 @@ def registry_get(host: str, repo: str, path: str, accept: str) -> bytes:
         basic = base64.b64encode(":".join(credentials).encode()).decode()
         token_request.add_header("Authorization", f"Basic {basic}")
     try:
-        with urllib.request.urlopen(token_request, timeout=60) as response:
+        with urlopen(token_request) as response:
             token_body = json.load(response)
     except urllib.error.HTTPError as error:
         hint = "" if credentials else " (no credentials found: log in with podman or docker, or set DOCKERHUB_USERNAME and DOCKERHUB_TOKEN)"
@@ -847,7 +873,7 @@ def registry_get(host: str, repo: str, path: str, accept: str) -> bytes:
     token = token_body.get("token") or token_body.get("access_token")
     request.add_header("Authorization", f"Bearer {token}")
     try:
-        with urllib.request.urlopen(request, timeout=60) as response:
+        with urlopen(request) as response:
             return response.read()
     except urllib.error.HTTPError as error:
         raise Failure(f"{host}/{repo}: HTTP {error.code} for {path}") from None
@@ -990,7 +1016,7 @@ def hub_request(method: str, path: str, token: str | None = None, data: dict | N
     body = json.dumps(data).encode() if data is not None else None
     request = urllib.request.Request(f"{HUB}{path}", data=body, method=method, headers=headers)
     try:
-        with urllib.request.urlopen(request, timeout=60) as response:
+        with urlopen(request) as response:
             raw = response.read()
             return response.status, (json.loads(raw) if raw else {})
     except urllib.error.HTTPError as error:

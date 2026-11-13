@@ -1,10 +1,11 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "Renovate bumps tool and image versions in versions.yml, and GitHub Actions digests. Hash pins and vulnerability patches are not Renovate's job: the Pins workflow rewrites versions.lock.json and images/locks on Renovate's branches, and refreshes them and the base image digests daily.",
+  "description": "Renovate bumps tool and image versions in versions.yml, and GitHub Actions digests, and merges every update but a major one by itself once all its checks pass. Hash pins and vulnerability patches are not Renovate's job: the Pins workflow rewrites versions.lock.json and images/locks on Renovate's branches, and refreshes them and the base image digests daily.",
   "extends": ["config:best-practices", ":semanticCommits"],
   "timezone": "Europe/London",
   "schedule": ["* 0-6 * * 6"],
   "minimumReleaseAge": "3 days",
+  "platformAutomerge": false,
   "labels": ["dependencies"],
   "gitIgnoredAuthors": ["41898282+github-actions[bot]@users.noreply.github.com"],
   "osvVulnerabilityAlerts": true,
@@ -26,6 +27,11 @@
     }
   ],
   "packageRules": [
+    {
+      "description": "Merge minor, patch and digest updates once every check passes (Renovate checks the results itself, as main has no required checks); a major update waits for review",
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
+      "automerge": true
+    },
     {
       "description": "One weekly pull request for tool bumps, so the Pins workflow repins them together",
       "matchManagers": ["custom.regex"],

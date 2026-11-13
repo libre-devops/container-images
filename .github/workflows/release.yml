@@ -5,7 +5,12 @@ name: Release
 # Smoke tests and scans that exact digest. Then, per image version, joins the
 # platforms into one manifest, tags it in GHCR and Docker Hub from the same
 # digest, checks the registries agree, signs it in both with cosign keyless
-# signing, and finally opens a pull request with the new README tables.
+# signing, and finally opens a pull request with the new README tables, which
+# Build merges once it passes.
+#
+# A pull request merged by the Build workflow does not trigger the push event
+# below (a merge made with GITHUB_TOKEN never does), so Build starts this
+# workflow itself after merging the daily pins refresh.
 #
 # Date tags are never overwritten (see scripts/publish.sh); version, alias and
 # latest tags move.
@@ -270,9 +275,9 @@ jobs:
           title: "docs: record the digests of the latest release"
           body: |
             The Release workflow published new digests. This updates `releases.json` and the
-            README tables that list them.
+            README tables that list them. Build merges this pull request once it passes.
       - name: Start Build on the pull request
-        if: steps.pr.outputs.pull-request-operation == 'created' || steps.pr.outputs.pull-request-operation == 'updated'
+        if: steps.pr.outputs.pull-request-number != '' && steps.pr.outputs.pull-request-operation != 'closed'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run build.yml --repo "$GITHUB_REPOSITORY" --ref release/readme-tables

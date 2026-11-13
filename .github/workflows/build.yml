@@ -6,9 +6,11 @@ name: Build
 # bases (RHEL and Wolfi), so that changing distribution stays a one-line
 # change. Nothing is pushed.
 #
-# Also started by the Pins workflow (workflow_dispatch) after it pushes
-# regenerated pins to a branch, because a push made with GITHUB_TOKEN does not
-# trigger workflows by itself.
+# Also started by the Pins and Release workflows (workflow_dispatch) after they
+# push to a branch, because a push made with GITHUB_TOKEN does not trigger
+# workflows by itself. On their own branches (the daily pins refresh and the
+# README tables after a release) a passing run merges the pull request, so
+# nobody has to.
 
 on:
   pull_request:
@@ -157,3 +159,38 @@ jobs:
           for result in $RESULTS; do
             [ "$result" = success ] || exit 1
           done
+
+  # Runs only when every job above passed. Merges exactly the commit that was
+  # built and tested (--match-head-commit), and only a pull request the
+  # workflows opened themselves. A merge made with GITHUB_TOKEN does not
+  # trigger the Release workflow's push event, so this starts Release when the
+  # merge changes what the images contain; the README tables change nothing in
+  # them.
+  merge:
+    name: Merge the bot pull request
+    needs: result
+    if: github.event_name == 'workflow_dispatch' && (github.ref_name == 'pins/refresh' || github.ref_name == 'release/readme-tables')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BRANCH: ${{ github.ref_name }}
+      SHA: ${{ github.sha }}
+    steps:
+      - name: Merge, and start Release if the images change
+        run: |
+          pr=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$BRANCH" --state open --json number,author \
+            --jq '[.[] | select(.author.login == "app/github-actions")][0].number // empty')
+          if [ -z "$pr" ]; then
+            echo "No open pull request from the workflows on $BRANCH."
+            exit 0
+          fi
+          gh pr merge "$pr" --repo "$GITHUB_REPOSITORY" --rebase --delete-branch --match-head-commit "$SHA"
+          echo "Merged #$pr ($SHA)."
+          if [ "$BRANCH" = pins/refresh ]; then
+            gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref main
+            echo "Started Release."
+          fi
