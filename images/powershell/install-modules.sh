@@ -16,7 +16,7 @@ $modules = [ordered]@{
     PSScriptAnalyzer   = $env:PSSCRIPTANALYZER_VERSION
     Pester             = $env:PESTER_VERSION
     Az                 = $env:AZ_POWERSHELL_VERSION
-    'Microsoft.Graph'  = $env:MICROSOFT_GRAPH_VERSION
+    "Microsoft.Graph"  = $env:MICROSOFT_GRAPH_VERSION
     LibreDevOpsHelpers = $env:LIBREDEVOPSHELPERS_VERSION
 }
 foreach ($name in $modules.Keys) {
