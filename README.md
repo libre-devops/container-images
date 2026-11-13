@@ -248,7 +248,10 @@ docker run --rm --user "$(id -u):0" -v "$PWD:/work" -v "$HOME/.ssh:/home/app/.ss
 Install collections per project from a `requirements.yml` with `ansible-galaxy collection
 install -r requirements.yml`; they go to `~/.ansible/collections`. `ansible-azure` has
 `azure.azcollection` installed for every user already, so authenticate the usual ways
-(`AZURE_CLIENT_ID` and friends, a managed identity, or `~/.azure/credentials`).
+(`AZURE_CLIENT_ID` and friends, a managed identity, or `~/.azure/credentials`). Azure modules
+run on `localhost`, where they need Ansible's own Python, which has their libraries: that is
+what Ansible uses for an implicit `localhost`. If your inventory lists `localhost`, give it
+`ansible_python_interpreter: "{{ ansible_playbook_python }}"`.
 
 **`ansible:2.16` is for one job only.** ansible-core runs Python on every host it manages,
 and from 2.17 that must be Python 3.7 or newer. RHEL 8 and its rebuilds ship Python 3.6 as

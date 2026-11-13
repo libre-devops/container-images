@@ -82,6 +82,10 @@ context.load_cert_chain("/tmp/server.pem")
 server.socket = context.wrap_socket(server.socket, server_side=True)
 server.serve_forever()
 ' >/dev/null
+for _ in $(seq 30); do
+	"$engine" exec "$name-server" python3 -c 'import socket; socket.create_connection(("127.0.0.1", 8443), 1)' 2>/dev/null && break
+	sleep 1
+done
 run --user 0 --network "$name" -e TEST_CA="$(cat "$work/ca.pem")" -e TLS_URL="https://$name-server:8443/" \
 	"$ref" bash -s <"$here/ca.sh"
 echo "== $ref: all smoke tests passed"
