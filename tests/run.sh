@@ -62,6 +62,12 @@ openssl x509 -req -in "$work/server.csr" -CA "$work/ca.pem" -CAkey "$work/ca.key
 	-days 1 -extfile "$work/server.ext" -out "$work/server.pem" 2>/dev/null
 "$engine" network create "$name" >/dev/null
 server_image=$("${images[@]}" test-server-image)
+for attempt in 1 2 3 4; do
+	"$engine" pull -q "$server_image" >/dev/null && break
+	[ "$attempt" -lt 4 ] || exit 1
+	echo "could not pull $server_image (attempt $attempt), retrying" >&2
+	sleep $((attempt * 15))
+done
 # shellcheck disable=SC2016 # Python code, run by the server container
 "$engine" run -d --name "$name-server" --network "$name" --user 0 --entrypoint python3 \
 	-e SERVER_PEM="$(cat "$work/server.pem" "$work/server.key")" "$server_image" -c '

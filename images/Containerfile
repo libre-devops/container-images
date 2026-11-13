@@ -13,6 +13,8 @@
 #               Go checksum database) with the pinned Go toolchain, after
 #               raising every dependency with a known vulnerability to its fixed
 #               version.
+#   openssh     The OpenSSH client, built from its latest release (see
+#               images/common/build-openssh.sh for why), for the ansible images.
 #   base        The base image, upgraded, with the shared packages, the app
 #               user, the tools every image has, and a trust store that every
 #               tool uses (add-ca-certificates adds an organisation's CA).
@@ -58,6 +60,15 @@ RUN --mount=type=bind,source=images,target=/src \
     && sh /src/common/fetch-tool.sh / go "${GO_ASSET}" \
     && sh /src/common/go-build-all.sh /built
 
+FROM ${BASE_IMAGE} AS openssh
+# hadolint ignore=DL3002
+USER 0
+ARG OPENSSH_ASSET=""
+RUN --mount=type=bind,source=images,target=/src \
+    sh /src/common/os-packages.sh ca-certificates curl tar gzip make gcc libc-dev 'linux-headers?' openssl-dev zlib-dev \
+    && sh /src/common/fetch-tool.sh /fetched openssh "${OPENSSH_ASSET}" \
+    && sh /src/common/build-openssh.sh /fetched/archive /built
+
 FROM ${BASE_IMAGE} AS base
 # hadolint ignore=DL3002
 USER 0
@@ -90,6 +101,7 @@ FROM base AS ansible
 ARG PYTHON_MINOR
 ARG ANSIBLE_LOCK
 COPY --from=fetch /fetched/uv/ /
+COPY --from=openssh /built/ /
 RUN --mount=type=bind,source=images,target=/src \
     sh /src/common/ensure-python.sh "${PYTHON_MINOR}" /usr/local/bin/uv \
     && sh /src/ansible/install.sh /usr/local/bin/uv "/src/${ANSIBLE_LOCK}" \
@@ -106,6 +118,7 @@ FROM base AS ansible-azure
 ARG PYTHON_MINOR
 ARG ANSIBLE_LOCK
 COPY --from=fetch /fetched/uv/ /
+COPY --from=openssh /built/ /
 RUN --mount=type=bind,source=images,target=/src \
     --mount=type=bind,from=fetch,source=/fetched,target=/fetched \
     sh /src/common/ensure-python.sh "${PYTHON_MINOR}" /usr/local/bin/uv \

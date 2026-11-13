@@ -41,6 +41,7 @@ Docker Hub from the same digest.
 - [Adding an organisation's CA bundle](#adding-an-organisations-ca-bundle)
 - [Pinning by digest or date tag](#pinning-by-digest-or-date-tag)
 - [Security and supply chain](#security-and-supply-chain)
+- [Built from source](#built-from-source)
 - [Changing the base image](#changing-the-base-image)
 - [Troubleshooting](#troubleshooting)
 - [Developing](#developing)
@@ -53,7 +54,8 @@ Nine images, each a thin layer of pinned tools on a hardened base:
 
 - **`python`**: CPython and uv, with one tag for every supported CPython from 3.12 upwards.
 - **`ansible`**: ansible-core and ansible-lint in their own virtual environment, with
-  jmespath, netaddr, pywinrm, an SSH client and uv. The current release, plus 2.16 for
+  jmespath, netaddr, pywinrm, OpenSSH (built from its latest release: see
+  [Built from source](#built-from-source)) and uv. The current release, plus 2.16 for
   managing hosts whose only Python is 3.6 (see [Ansible](#ansible)).
 - **`ansible-azure`**: the `ansible` image with the
   [azure.azcollection](https://galaxy.ansible.com/ui/repo/published/azure/azcollection/)
@@ -115,9 +117,9 @@ cosign verify ghcr.io/libre-devops/terraform:1 \
 | `azure-cli` | `2.72.0`<br>`2.72.0-py3.12-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | Azure CLI 2.72.0 on Python 3.12, ldo-cli 0.8.1 | `ghcr.io/libre-devops/azure-cli:2.72.0`<br>`docker.io/libredevops/azure-cli:2.72.0` |
 | `terraform` | `1.17.1` `1.17` `1` `latest`<br>`1.17.1-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | Terraform 1.17.1 by default (tenv 4.15.1; a repository's .terraform-version wins), TFLint 0.65.0, terraform-docs 0.24.0, Conftest 0.71.1 | `ghcr.io/libre-devops/terraform:1.17.1`<br>`docker.io/libredevops/terraform:1.17.1` |
 | `terraform` | `1.17.1-alpine` `1.17-alpine` `1-alpine` `alpine`<br>`1.17.1-alpine-YYYYMMDD` | `dhi.io/alpine-base:3.24-alpine3.24-dev` | Terraform 1.17.1 by default (tenv 4.15.1; a repository's .terraform-version wins), TFLint 0.65.0, terraform-docs 0.24.0, Conftest 0.71.1 | `ghcr.io/libre-devops/terraform:1.17.1-alpine`<br>`docker.io/libredevops/terraform:1.17.1-alpine` |
-| `ansible` | `2.22.0` `2.22` `latest`<br>`2.22.0-py3.14-YYYYMMDD` | `dhi.io/python:3.14-debian13-dev` | ansible-core 2.22.0 on Python 3.14, with ansible-lint, jmespath, netaddr, pywinrm and uv 0.13.7 | `ghcr.io/libre-devops/ansible:2.22.0`<br>`docker.io/libredevops/ansible:2.22.0` |
-| `ansible` | `2.16.20` `2.16`<br>`2.16.20-py3.12-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | ansible-core 2.16.20 on Python 3.12, for hosts whose only Python is 3.6 (RHEL 8): the last line that supports them. With ansible-lint, jmespath, netaddr, pywinrm and uv 0.13.7 | `ghcr.io/libre-devops/ansible:2.16.20`<br>`docker.io/libredevops/ansible:2.16.20` |
-| `ansible-azure` | `4.2.0` `4` `latest`<br>`4.2.0-YYYYMMDD` | `dhi.io/python:3.14-debian13-dev` | azure.azcollection 4.2.0 and its Python requirements, on ansible-core 2.22.0 and Python 3.14, with ansible-lint and uv 0.13.7 | `ghcr.io/libre-devops/ansible-azure:4.2.0`<br>`docker.io/libredevops/ansible-azure:4.2.0` |
+| `ansible` | `2.22.0` `2.22` `latest`<br>`2.22.0-py3.14-YYYYMMDD` | `dhi.io/python:3.14-debian13-dev` | ansible-core 2.22.0 on Python 3.14, with ansible-lint, jmespath, netaddr, pywinrm, OpenSSH 10.6p2 and uv 0.13.7 | `ghcr.io/libre-devops/ansible:2.22.0`<br>`docker.io/libredevops/ansible:2.22.0` |
+| `ansible` | `2.16.20` `2.16`<br>`2.16.20-py3.12-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | ansible-core 2.16.20 on Python 3.12, for hosts whose only Python is 3.6 (RHEL 8): the last line that supports them. With ansible-lint, jmespath, netaddr, pywinrm, OpenSSH 10.6p2 and uv 0.13.7 | `ghcr.io/libre-devops/ansible:2.16.20`<br>`docker.io/libredevops/ansible:2.16.20` |
+| `ansible-azure` | `4.2.0` `4` `latest`<br>`4.2.0-YYYYMMDD` | `dhi.io/python:3.14-debian13-dev` | azure.azcollection 4.2.0 and its Python requirements, on ansible-core 2.22.0 and Python 3.14, with ansible-lint, OpenSSH 10.6p2 and uv 0.13.7 | `ghcr.io/libre-devops/ansible-azure:4.2.0`<br>`docker.io/libredevops/ansible-azure:4.2.0` |
 | `powershell` | `7.6.9` `7.6` `7` `lts` `latest`<br>`7.6.9-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | PowerShell 7.6.9, Az 16.5.0, Microsoft.Graph 2.41.2, Pester 6.2.0, PSScriptAnalyzer 1.25.0, LibreDevOpsHelpers 3.0.1 | `ghcr.io/libre-devops/powershell:7.6.9`<br>`docker.io/libredevops/powershell:7.6.9` |
 | `toolbox` | `1` `latest`<br>`1-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | Python 3.12 and uv 0.13.7, Azure CLI 2.92.0, ldo-cli 0.8.1, Terraform 1.17.1 by default (tenv 4.15.1), TFLint 0.65.0, terraform-docs 0.24.0, Conftest 0.71.1, PowerShell 7.6.9 with Az 16.5.0, Microsoft.Graph 2.41.2, Pester 6.2.0, PSScriptAnalyzer 1.25.0 and LibreDevOpsHelpers 3.0.1 | `ghcr.io/libre-devops/toolbox:1`<br>`docker.io/libredevops/toolbox:1` |
 | `azure-pipelines-agent` | `5.281.1` `5` `latest`<br>`5.281.1-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | Azure Pipelines agent 5.281.1, with git, curl, jq, ShellCheck and shfmt | `ghcr.io/libre-devops/azure-pipelines-agent:5.281.1`<br>`docker.io/libredevops/azure-pipelines-agent:5.281.1` |
@@ -534,6 +536,18 @@ done
 ```
 
 To report a vulnerability, see [SECURITY.md](./SECURITY.md).
+
+## Built from source
+
+Everything in the images comes from the distribution's packages or a pinned upstream release,
+except what is listed here. Each is built from its latest signed or checksummed release, which
+Renovate bumps, because the packaged version lags behind a security fix; each goes back to the
+package once that catches up.
+
+| What | Images | Why | Back to the package when |
+| --- | --- | --- | --- |
+| OpenSSH client (`ssh`, `scp`, `sftp`, `ssh-keygen` and friends), from its signed release | `ansible`, `ansible-azure` | Debian 13's `openssh-client` lacked the fix for CVE-2026-60002 (critical, fixed in OpenSSH 10.4) on 2026-11-13 | The base's `openssh-client` passes the scan gate: use `os_packages: [ssh]` and remove the `openssh` stage |
+| shfmt, tenv, TFLint, terraform-docs, Conftest | all, `terraform`, `toolbox` | Built with the current Go and patched dependencies by design, not as a stopgap (see [Controls](#controls)) | Not planned |
 
 ## Changing the base image
 

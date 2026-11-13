@@ -40,6 +40,7 @@ Docker Hub from the same digest.
 - [Adding an organisation's CA bundle](#adding-an-organisations-ca-bundle)
 - [Pinning by digest or date tag](#pinning-by-digest-or-date-tag)
 - [Security and supply chain](#security-and-supply-chain)
+- [Built from source](#built-from-source)
 - [Changing the base image](#changing-the-base-image)
 - [Troubleshooting](#troubleshooting)
 - [Developing](#developing)
@@ -52,7 +53,8 @@ Nine images, each a thin layer of pinned tools on a hardened base:
 
 - **`python`**: CPython and uv, with one tag for every supported CPython from 3.12 upwards.
 - **`ansible`**: ansible-core and ansible-lint in their own virtual environment, with
-  jmespath, netaddr, pywinrm, an SSH client and uv. The current release, plus 2.16 for
+  jmespath, netaddr, pywinrm, OpenSSH (built from its latest release: see
+  [Built from source](#built-from-source)) and uv. The current release, plus 2.16 for
   managing hosts whose only Python is 3.6 (see [Ansible](#ansible)).
 - **`ansible-azure`**: the `ansible` image with the
   [azure.azcollection](https://galaxy.ansible.com/ui/repo/published/azure/azcollection/)
@@ -502,6 +504,18 @@ done
 ```
 
 To report a vulnerability, see [SECURITY.md](./SECURITY.md).
+
+## Built from source
+
+Everything in the images comes from the distribution's packages or a pinned upstream release,
+except what is listed here. Each is built from its latest signed or checksummed release, which
+Renovate bumps, because the packaged version lags behind a security fix; each goes back to the
+package once that catches up.
+
+| What | Images | Why | Back to the package when |
+| --- | --- | --- | --- |
+| OpenSSH client (`ssh`, `scp`, `sftp`, `ssh-keygen` and friends), from its signed release | `ansible`, `ansible-azure` | Debian 13's `openssh-client` lacked the fix for CVE-2026-60002 (critical, fixed in OpenSSH 10.4) on 2026-11-13 | The base's `openssh-client` passes the scan gate: use `os_packages: [ssh]` and remove the `openssh` stage |
+| shfmt, tenv, TFLint, terraform-docs, Conftest | all, `terraform`, `toolbox` | Built with the current Go and patched dependencies by design, not as a stopgap (see [Controls](#controls)) | Not planned |
 
 ## Changing the base image
 

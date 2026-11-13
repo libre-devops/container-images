@@ -123,8 +123,14 @@ AZURE_PIPELINES_AGENT = {
     "arm64-musl": "linux-musl-arm64",
 }
 GALAXY_COLLECTIONS = {"azure-azcollection": "azure.azcollection"}
+# OpenSSH portable publishes signed tarballs, not checksums: a release is
+# pinned only after its signature verifies against the OpenSSH release key
+# (Damien Miller's), named here by fingerprint.
+OPENSSH_CDN = "https://cdn.openbsd.org/pub/OpenBSD/OpenSSH"
+OPENSSH_RELEASE_KEY = "7168B983815A5EEF59A4ADFD2A3F414E736060BA"
 OTHER_DOWNLOADS: dict[str, tuple[str, ...]] = {
     "go": GO_ARCHES,
+    "openssh": ("any",),
     "azure-pipelines-agent": tuple(AZURE_PIPELINES_AGENT),
     **{name: ("any",) for name in GALAXY_COLLECTIONS},
 }
@@ -314,7 +320,11 @@ class Config:
     def downloads(self, entry: Entry) -> list[tuple[str, str]]:
         """(tool, version) for every release download an image version needs."""
         out = [("go", self.tools["go"])]
-        out += [(t, self.tools[t]) for t in self.tools_for(entry) if t in DOWNLOADS and t not in GO_BUILDS]
+        out += [
+            (t, self.tools[t])
+            for t in self.tools_for(entry)
+            if (t in DOWNLOADS or t in OTHER_DOWNLOADS) and t not in GO_BUILDS
+        ]
         for c in self.components(entry):
             extra = self.images[c.image].get("download")
             if extra:
@@ -524,9 +534,37 @@ def pin_galaxy_collection(tool: str, version: str) -> dict:
     return {"any": {"url": meta["download_url"], "sha256": meta["artifact"]["sha256"]}}
 
 
+def pin_openssh(version: str) -> dict:
+    """The OpenSSH portable release tarball, pinned by SHA-256 once its PGP
+    signature verifies against OPENSSH_RELEASE_KEY."""
+    import tempfile
+
+    url = f"{OPENSSH_CDN}/portable/openssh-{version}.tar.gz"
+    with tempfile.TemporaryDirectory() as tmp:
+        work = Path(tmp)
+        for name, source in (("key.asc", f"{OPENSSH_CDN}/RELEASE_KEY.asc"), ("release.tar.gz", url), ("release.asc", f"{url}.asc")):
+            with http(source, timeout=300) as response:
+                (work / name).write_bytes(response.read())
+        home = work / "gnupg"
+        home.mkdir(mode=0o700)
+        env = {**os.environ, "GNUPGHOME": str(home)}
+        subprocess.run(["gpg", "--batch", "--quiet", "--import", str(work / "key.asc")], env=env, check=True, capture_output=True)
+        result = subprocess.run(
+            ["gpg", "--batch", "--status-fd", "1", "--verify", str(work / "release.asc"), str(work / "release.tar.gz")],
+            env=env, capture_output=True, text=True,
+        )  # fmt: skip
+        if not re.search(rf"^\[GNUPG:\] VALIDSIG .* {OPENSSH_RELEASE_KEY}$", result.stdout, flags=re.M):
+            raise Failure(f"openssh-{version}.tar.gz is not signed by the OpenSSH release key {OPENSSH_RELEASE_KEY}")
+        digest = hashlib.sha256((work / "release.tar.gz").read_bytes()).hexdigest()
+    note(f"  openssh {version}: signature verified, {digest}")
+    return {"any": {"url": url, "sha256": digest}}
+
+
 def pin_download(tool: str, version: str, token: str | None) -> dict:
     if tool == "go":
         return pin_go_toolchain(version)
+    if tool == "openssh":
+        return pin_openssh(version)
     if tool == "azure-pipelines-agent":
         return pin_azure_pipelines_agent(version, token)
     if tool in GALAXY_COLLECTIONS:

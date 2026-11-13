@@ -118,6 +118,6 @@ ldo-cli) mkdir -p "$root/wheels" && cp "$file" "$root/wheels/" ;;
 azure-azcollection) mkdir -p "$root/collections" && cp "$file" "$root/collections/" ;;
 # The agents are unpacked by images/agents/install.sh, straight into the
 # directory they run from, so their files are copied into the image only once.
-azure-pipelines-agent | github-runner) mkdir -p "$root/archive" && cp "$file" "$root/archive/" ;;
+azure-pipelines-agent | github-runner | openssh) mkdir -p "$root/archive" && cp "$file" "$root/archive/" ;;
 *) die "unknown tool: $tool" ;;
 esac

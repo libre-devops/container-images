@@ -89,6 +89,14 @@ tools:
   terraform-docs: 0.24.0
   # renovate: datasource=github-releases depName=open-policy-agent/conftest extractVersion=^v(?<version>.+)$
   conftest: 0.71.1
+  # Built from source (images/common/build-openssh.sh), at the latest release,
+  # because Debian's openssh-client lags upstream security fixes: CVE-2026-60002
+  # (critical; fixed in OpenSSH 10.4) was unfixed in Debian 13 when this was
+  # added on 2026-11-13. Go back to the distribution's package (os_packages:
+  # ssh) once it carries every fix the scan gate needs. See "Built from source"
+  # in the README.
+  # renovate: datasource=custom.openssh-portable depName=openssh
+  openssh: 10.6p2
   # renovate: datasource=github-releases depName=libre-devops/ldo-cli extractVersion=^v(?<version>.+)$
   ldo-cli: 0.8.1
   # renovate: datasource=nuget depName=Az registryUrl=https://www.powershellgallery.com/api/v2/
@@ -179,10 +187,11 @@ images:
       - { version: "1.17.1", base: alpine, flavour: alpine, latest: true, moving: [minor, major] }
 
   ansible:
-    description: ansible-core and ansible-lint in their own virtual environment, with an SSH client and uv
-    contents: ansible-core {version} on Python {python}, with ansible-lint, jmespath, netaddr, pywinrm and uv {uv}
-    tools: [uv]
-    os_packages: [ssh]
+    description: ansible-core and ansible-lint in their own virtual environment, with OpenSSH and uv
+    contents: ansible-core {version} on Python {python}, with ansible-lint, jmespath, netaddr, pywinrm, OpenSSH {openssh} and uv {uv}
+    tools: [uv, openssh]
+    # What the OpenSSH client built from source links against.
+    os_packages: [openssl, zlib]
     versions:
       # renovate: datasource=pypi depName=ansible-core
       - { version: "2.22.0", python: "3.14", base: python-3.14, latest: true, moving: [minor] }
@@ -191,11 +200,11 @@ images:
       # and later need Python 3.7 or newer on every managed host. Renovate keeps
       # this line on 2.16 patch releases. Use the current line for anything else.
       # renovate: datasource=pypi depName=ansible-core
-      - { version: "2.16.20", python: "3.12", base: python-3.12, moving: [minor], contents: "ansible-core {version} on Python {python}, for hosts whose only Python is 3.6 (RHEL 8): the last line that supports them. With ansible-lint, jmespath, netaddr, pywinrm and uv {uv}" }
+      - { version: "2.16.20", python: "3.12", base: python-3.12, moving: [minor], contents: "ansible-core {version} on Python {python}, for hosts whose only Python is 3.6 (RHEL 8): the last line that supports them. With ansible-lint, jmespath, netaddr, pywinrm, OpenSSH {openssh} and uv {uv}" }
 
   ansible-azure:
     description: The ansible image with the azure.azcollection collection and its Python requirements
-    contents: azure.azcollection {version} and its Python requirements, on ansible-core {ansible} and Python {python}, with ansible-lint and uv {uv}
+    contents: azure.azcollection {version} and its Python requirements, on ansible-core {ansible} and Python {python}, with ansible-lint, OpenSSH {openssh} and uv {uv}
     includes: [ansible]
     download: azure-azcollection
     tests: [ansible, ansible-azure]

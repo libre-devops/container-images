@@ -22,6 +22,10 @@ for command in ansible ansible-playbook ansible-galaxy ansible-doc ansible-vault
 done
 ok "the ansible commands, ansible-lint and ssh are on PATH"
 
+ssh -V 2>&1 | grep -q "^OpenSSH_${EXPECT_OPENSSH}," || fail "ssh is $(ssh -V 2>&1), want OpenSSH $EXPECT_OPENSSH"
+ssh-keygen -q -t ed25519 -N '' -f "$(mktemp -u)"
+ok "OpenSSH $EXPECT_OPENSSH (built from source) runs and makes keys"
+
 /opt/ansible/bin/python -c 'import jmespath, netaddr, winrm, pip_system_certs; print("jmespath", jmespath.__version__, "netaddr", netaddr.__version__)'
 ok "jmespath, netaddr, pywinrm and pip-system-certs import"
 
