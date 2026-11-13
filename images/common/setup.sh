@@ -36,4 +36,5 @@ fi
 	echo "setup: no CA bundle found to link at $bundle" >&2
 	exit 1
 }
+mkdir -p /usr/local/bin
 install -m 0755 "$lib/add-ca-certificates.sh" /usr/local/bin/add-ca-certificates
