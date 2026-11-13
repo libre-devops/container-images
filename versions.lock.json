@@ -7,7 +7,7 @@
         "overrides": {
           "github.com/go-jose/go-jose/v4": "v4.1.6",
           "github.com/klauspost/compress": "v1.20.2",
-          "golang.org/x/crypto": "v0.58.1-0.20261009181718-2f1f834330b2",
+          "golang.org/x/crypto": "v0.59.0",
           "golang.org/x/net": "v0.62.0"
         }
       }
@@ -24,7 +24,7 @@
       "4.15.1": {
         "module": "github.com/tofuutils/tenv/v4",
         "overrides": {
-          "golang.org/x/crypto": "v0.58.1-0.20261009181718-2f1f834330b2",
+          "golang.org/x/crypto": "v0.59.0",
           "golang.org/x/mod": "v0.40.0",
           "golang.org/x/net": "v0.62.0",
           "golang.org/x/sys": "v0.44.0",
@@ -36,7 +36,7 @@
       "0.24.0": {
         "module": "github.com/terraform-docs/terraform-docs",
         "overrides": {
-          "golang.org/x/crypto": "v0.58.1-0.20261009181718-2f1f834330b2",
+          "golang.org/x/crypto": "v0.59.0",
           "golang.org/x/mod": "v0.40.0",
           "golang.org/x/net": "v0.62.0",
           "golang.org/x/sys": "v0.44.0",
@@ -50,7 +50,7 @@
         "module": "github.com/terraform-linters/tflint",
         "overrides": {
           "github.com/go-jose/go-jose/v4": "v4.1.6",
-          "golang.org/x/crypto": "v0.58.1-0.20261009181718-2f1f834330b2",
+          "golang.org/x/crypto": "v0.59.0",
           "golang.org/x/net": "v0.62.0"
         }
       }
