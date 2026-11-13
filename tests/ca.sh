@@ -67,8 +67,16 @@ if command -v pwsh >/dev/null; then
 	ok "PowerShell (.NET)"
 fi
 
+# The agents also bundle end-of-life Node versions for legacy tasks; Node 16's
+# OpenSSL 1.1 cannot even read some bases' OpenSSL 3 configuration. Check the
+# runtimes current tasks use: Node 20 and later.
 for node in /opt/actions-runner/externals/node*/bin/node /opt/azure-pipelines-agent/externals/node*/bin/node; do
 	[ -x "$node" ] || continue
+	major=$("$node" -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)
+	if [ "$major" -lt 20 ]; then
+		echo "note: skipping $node (Node $major, end of life, for legacy tasks only)"
+		continue
+	fi
 	"$node" -e 'require("https").get(process.env.TLS_URL, r => process.exit(r.statusCode === 200 ? 0 : 1)).on("error", e => { console.error(e.message); process.exit(1) })' ||
 		fail "$node does not trust the test CA"
 	ok "$node"
