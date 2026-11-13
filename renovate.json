@@ -44,6 +44,12 @@
       "allowedVersions": "/^7\\.6\\./"
     },
     {
+      "description": "Keep the ansible-core 2.16 line (for managed hosts whose only Python is 3.6) on 2.16 patch releases",
+      "matchPackageNames": ["ansible-core"],
+      "matchCurrentVersion": "/^2\\.16\\./",
+      "allowedVersions": "/^2\\.16\\./"
+    },
+    {
       "description": "Stay on Terraform 1.x",
       "matchPackageNames": ["hashicorp/terraform"],
       "allowedVersions": "<2.0.0"

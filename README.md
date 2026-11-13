@@ -36,6 +36,7 @@ Docker Hub from the same digest.
 - [Choosing an image](#choosing-an-image)
 - [Tags, versions and support](#tags-versions-and-support)
 - [Usage](#usage)
+- [Self-hosted CI agents](#self-hosted-ci-agents)
 - [Configuration reference](#configuration-reference)
 - [Adding an organisation's CA bundle](#adding-an-organisations-ca-bundle)
 - [Pinning by digest or date tag](#pinning-by-digest-or-date-tag)
@@ -48,18 +49,29 @@ Docker Hub from the same digest.
 
 ## Overview
 
-Five images, each a thin layer of pinned tools on a hardened base:
+Nine images, each a thin layer of pinned tools on a hardened base:
 
 - **`python`**: CPython and uv, with one tag for every supported CPython from 3.12 upwards.
+- **`ansible`**: ansible-core and ansible-lint in their own virtual environment, with
+  jmespath, netaddr, pywinrm, an SSH client and uv. The current release, plus 2.16 for
+  managing hosts whose only Python is 3.6 (see [Ansible](#ansible)).
+- **`ansible-azure`**: the `ansible` image with the
+  [azure.azcollection](https://galaxy.ansible.com/ui/repo/published/azure/azcollection/)
+  collection and every Python library its modules need.
 - **`azure-cli`**: the Azure CLI in its own virtual environment, and
   [`ldo-cli`](https://github.com/libre-devops/ldo-cli). The current release, plus 2.72.0 as a
   long-lived line.
 - **`terraform`**: tenv with a default Terraform, TFLint, terraform-docs and Conftest. A
   repository's `.terraform-version` wins over the default. Also as an Alpine variant
   (`-alpine` tags), about a third smaller.
-- **`powershell`**: PowerShell LTS with PSScriptAnalyzer, Pester, Az and
+- **`powershell`**: PowerShell LTS with PSScriptAnalyzer, Pester, Az, Microsoft.Graph and
   [LibreDevOpsHelpers](https://github.com/libre-devops/powershell-helpers).
-- **`toolbox`**: every tool above in one image, assembled from the same build stages.
+- **`toolbox`**: Python, the Azure CLI, Terraform and PowerShell in one image, assembled from
+  the same build stages.
+- **`azure-pipelines-agent`** and **`github-runner`**: self-hosted CI agents that register
+  themselves from environment variables and run one job per container. Each also comes as a
+  `toolbox` flavour with every toolbox tool in it (see
+  [Self-hosted CI agents](#self-hosted-ci-agents)).
 
 What every image guarantees:
 
@@ -119,7 +131,10 @@ Every image also has bash, git, curl, ca-certificates, ShellCheck 0.11.0, shfmt 
 
 | If you need | Use | Why |
 | --- | --- | --- |
-| One tool family in a CI job | `python`, `azure-cli`, `terraform` or `powershell` | Smaller pulls, smaller attack surface, fewer reasons to rebuild |
+| One tool family in a CI job | `python`, `ansible`, `azure-cli`, `terraform` or `powershell` | Smaller pulls, smaller attack surface, fewer reasons to rebuild |
+| Ansible playbooks against Azure | `ansible-azure` | The Azure collection and its many Python libraries, already installed and patched |
+| Ansible for hosts whose only Python is 3.6, such as RHEL 8 | `ansible:2.16` | ansible-core 2.17 and later cannot manage them; see [Ansible](#ansible) |
+| Self-hosted Azure Pipelines agents or GitHub Actions runners | `azure-pipelines-agent`, `github-runner` | Ephemeral by default; the `toolbox` tags carry every toolbox tool |
 | Several tool families in one job, or an interactive shell | `toolbox` | Everything together; the largest image (the Az PowerShell modules and the Azure CLI dominate its size) |
 | A specific CPython | `python:<major.minor>` | One tag per supported CPython |
 | The smallest Terraform image | `terraform:alpine` | About a third smaller than the Debian image. musl, so not for Azure Pipelines container jobs, which need glibc |
@@ -145,10 +160,13 @@ Every release records its digests in this README and in
 | Image | Versions |
 | --- | --- |
 | `python` | Every CPython release from 3.12 upwards that upstream still supports |
+| `ansible` | The current ansible-core, and 2.16 for managed hosts on Python 3.6 |
+| `ansible-azure` | The current azure.azcollection, on the current `ansible` |
 | `azure-cli` | The current release, and 2.72.0 as a long-lived line for networks whose TLS inspection fails the stricter certificate checks in Python 3.13 and later |
 | `terraform` | The current Terraform 1.x as the default, on Debian and on Alpine; any other version through `.terraform-version` |
 | `powershell` | The current PowerShell LTS |
-| `toolbox` | The latest version of each of the above, with the Azure CLI's Python |
+| `toolbox` | The latest `azure-cli`, `terraform` and `powershell`, with the Azure CLI's Python |
+| `azure-pipelines-agent`, `github-runner` | The current agent release, on its own and atop `toolbox` |
 
 **Support.** A version is supported while it is listed in `versions.yml`: its moving tags are
 rebuilt weekly and whenever a fix is available. When a version leaves `versions.yml` (for
@@ -217,6 +235,27 @@ steps:
       ghcr.io/libre-devops/powershell:lts pwsh -File ./build.ps1
 ```
 
+### Ansible
+
+Mount the playbooks and an SSH key, and run as your own uid so that what Ansible writes stays
+yours:
+
+```sh
+docker run --rm --user "$(id -u):0" -v "$PWD:/work" -v "$HOME/.ssh:/home/app/.ssh:ro" \
+  ghcr.io/libre-devops/ansible:2.22 ansible-playbook -i inventory.ini site.yml
+```
+
+Install collections per project from a `requirements.yml` with `ansible-galaxy collection
+install -r requirements.yml`; they go to `~/.ansible/collections`. `ansible-azure` has
+`azure.azcollection` installed for every user already, so authenticate the usual ways
+(`AZURE_CLIENT_ID` and friends, a managed identity, or `~/.azure/credentials`).
+
+**`ansible:2.16` is for one job only.** ansible-core runs Python on every host it manages,
+and from 2.17 that must be Python 3.7 or newer. RHEL 8 and its rebuilds ship Python 3.6 as
+the system (platform) Python, so the current ansible-core cannot manage them without first
+installing a newer Python on each. The 2.16 line still can, and Renovate keeps it on 2.16
+patch releases. Use it for those hosts, and the current line for everything else.
+
 ### Rootless Podman
 
 `--userns=keep-id` maps your user to the image's uid 10001, so files in the mounted directory
@@ -243,6 +282,68 @@ securityContext:
     drop: ["ALL"]
 ```
 
+## Self-hosted CI agents
+
+`azure-pipelines-agent` and `github-runner` register themselves when the container starts,
+from environment variables, and are **ephemeral** by default: each runs one job, removes its
+registration and exits, so every job starts from a clean image. Run them under anything that
+restarts containers: a Kubernetes Deployment, a systemd unit, or `docker run --restart`. The
+`toolbox` tags (`azure-pipelines-agent:toolbox`, `github-runner:toolbox`) add everything in
+the `toolbox` image.
+
+**Azure Pipelines.** A personal access token with the **Agent Pools (Read & manage)** scope
+registers the agent; `AZP_TOKEN_FILE`, a mounted secret, keeps it out of the environment.
+
+```sh
+docker run -d --restart always \
+  -e AZP_URL=https://dev.azure.com/contoso -e AZP_POOL=containers \
+  -e AZP_TOKEN_FILE=/run/secrets/azp-token -v "$PWD/azp-token:/run/secrets/azp-token:ro" \
+  ghcr.io/libre-devops/azure-pipelines-agent:toolbox
+```
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `AZP_URL` | required | The organisation, such as `https://dev.azure.com/contoso` |
+| `AZP_TOKEN` or `AZP_TOKEN_FILE` | required | The token, or a file holding it |
+| `AZP_POOL` | `Default` | The agent pool |
+| `AZP_AGENT_NAME` | the hostname | The agent's name |
+| `AZP_WORK` | `_work` | The work directory, in `/opt/azure-pipelines-agent` |
+| `AZP_EPHEMERAL` | `true` | `false` keeps the agent running jobs until the container stops |
+
+**GitHub Actions.** Give the runner a registration token, a token that can create one, or a
+just-in-time configuration (the API's `generate-jitconfig`, the best fit for autoscalers).
+
+```sh
+docker run -d --restart always \
+  -e RUNNER_URL=https://github.com/contoso -e RUNNER_ACCESS_TOKEN \
+  -e RUNNER_LABELS=containers \
+  ghcr.io/libre-devops/github-runner:toolbox
+```
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `RUNNER_URL` | required, unless `RUNNER_JIT_CONFIG` | `https://github.com/<org>` or `https://github.com/<owner>/<repo>`, or the same on GitHub Enterprise Server |
+| `RUNNER_TOKEN` | | A registration token |
+| `RUNNER_ACCESS_TOKEN` | | Creates registration tokens itself: a GitHub App installation token or a fine-grained token with Administration write (repository) or Self-hosted runners write (organisation) |
+| `RUNNER_JIT_CONFIG` | | A just-in-time configuration; nothing else is needed |
+| `RUNNER_NAME` | the hostname | The runner's name |
+| `RUNNER_LABELS` | | Extra labels, comma-separated, on top of `self-hosted`, `linux` and the architecture |
+| `RUNNER_GROUP` | | The runner group |
+| `RUNNER_WORKDIR` | `_work` | The work directory, in `/opt/actions-runner` |
+| `RUNNER_EPHEMERAL` | `true` | `false` keeps the runner running jobs until the container stops |
+
+Things to know:
+
+- **Updates come as images.** Neither agent updates itself. Renovate bumps them and a release
+  follows, so keep pulling the moving tags: GitHub stops sending jobs to a runner 30 days after
+  a newer release.
+- **Jobs run as the agent's user**, so a job can read any credential the agent holds. Scope
+  the tokens as above and nothing more.
+- **No Docker inside.** Jobs that build images or use container actions and service containers
+  need a container engine, which these images do not include; give them a Docker-capable
+  host or a sidecar.
+- **glibc only for the runner.** GitHub publishes no musl build, so there is no Alpine flavour.
+
 ## Configuration reference
 
 ### User and paths
@@ -256,6 +357,9 @@ securityContext:
 | `/opt/microsoft/powershell/7` | PowerShell (`powershell`, `toolbox`) | root |
 | `/usr/local/share/powershell/Modules` | Pinned PowerShell modules, for all users | root |
 | `/home/app/.tenv` | tenv's Terraform installs (`TENV_ROOT`) | `app`, and any uid in group 0 |
+| `/opt/ansible` | Ansible's virtual environment (`ansible`, `ansible-azure`) | root |
+| `/usr/share/ansible/collections` | Collections for every user (`ansible-azure`) | root |
+| `/opt/azure-pipelines-agent`, `/opt/actions-runner` | The agents, their registration and their work (`azure-pipelines-agent`, `github-runner`) | `app`, and any uid in group 0 |
 
 ### Environment
 
@@ -264,6 +368,10 @@ Set by the images; override any of them with `-e` or your CI system's environmen
 | Variable | Value | Image | Effect |
 | --- | --- | --- | --- |
 | `HOME` | `/home/app` | all | Consistent home for any uid |
+| `REQUESTS_CA_BUNDLE` | `/etc/ssl/certs/ca-certificates.crt` | all | Python `requests` (and the Azure CLI) use the system trust store |
+| `NODE_EXTRA_CA_CERTS` | `/etc/ssl/certs/ca-certificates.crt` | all | Node.js, which the CI agents run tasks with, trusts the system store too |
+| `UV_NATIVE_TLS` | `true` | all | uv uses the system trust store rather than its own |
+| `LANG` | `C.UTF-8` | `ansible`, `ansible-azure` | ansible-core refuses to run without a UTF-8 locale |
 | `PYTHONUNBUFFERED` | `1` | `python`, `azure-cli`, `toolbox` | Unbuffered output in CI logs |
 | `AZURE_CORE_COLLECT_TELEMETRY` | `no` | `azure-cli`, `toolbox` | No Azure CLI telemetry |
 | `TENV_ROOT` | `/home/app/.tenv` | `terraform`, `toolbox` | Where tenv keeps Terraform versions |
@@ -279,27 +387,33 @@ systems mount workspaces owned by other uids.
 ## Adding an organisation's CA bundle
 
 Networks with TLS inspection need their root CA in the image. Build a thin layer `FROM` a
-pinned digest of these images, add the certificate, and switch back to the app user:
+pinned digest of these images, add the certificate with `add-ca-certificates`, and switch
+back to the app user:
 
 ```Dockerfile
 FROM ghcr.io/libre-devops/azure-cli:2.92.0@sha256:<digest>
 USER root
-COPY organisation-root-ca.crt /usr/local/share/ca-certificates/organisation-root-ca.crt
-RUN update-ca-certificates
+COPY organisation-root-ca.pem /tmp/organisation-root-ca.pem
+RUN add-ca-certificates /tmp/organisation-root-ca.pem && rm /tmp/organisation-root-ca.pem
 USER 10001:10001
 ```
 
-That covers curl, git, Terraform and the Go tools, PowerShell and .NET, and Python's `ssl`
-module. Some tools carry their own bundle and need pointing at the system one:
+That is all. `add-ca-certificates` works on every base (Debian, Alpine, RHEL and Wolfi), takes
+files holding one or several PEM certificates, and adds them to the system trust store, which
+every tool in the images uses:
 
-| Tool | Setting |
+| Tool | Trusts the system store through |
 | --- | --- |
-| Azure CLI, Python `requests` | `REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt` |
-| pip | `PIP_CERT=/etc/ssl/certs/ca-certificates.crt` |
+| curl, git, Terraform and the Go tools, PowerShell and .NET | The operating system's TLS libraries |
+| The Azure CLI, ldo-cli and Ansible | [pip-system-certs](https://pypi.org/project/pip-system-certs/), installed in each of their virtual environments |
+| Python `requests` in your own environments | `REQUESTS_CA_BUNDLE` |
+| pip | Its built-in use of the system store (pip 24.2 and later) |
 | uv | `UV_NATIVE_TLS=true` |
+| Node.js, and the CI agents' tasks | `NODE_EXTRA_CA_CERTS` |
 
-On a RHEL base the certificate goes in `/etc/pki/ca-trust/source/anchors/`, the command is
-`update-ca-trust`, and the bundle is `/etc/pki/tls/certs/ca-bundle.crt`.
+The system bundle is `/etc/ssl/certs/ca-certificates.crt` on every base (a link to
+`/etc/pki/tls/certs/ca-bundle.crt` on RHEL). Every pull request proves all of the above: the
+smoke tests add a throwaway CA and check each client against a server it signed.
 
 ## Pinning by digest or date tag
 
@@ -462,6 +576,9 @@ request, so either edit stays safe. If a hardened variant you need does not exis
 | A container job in Azure Pipelines fails before the first step | The agent could not add its user | Start the container as root: `options: --user 0:0` |
 | An `-alpine` image fails as an Azure Pipelines container job | The agent's Node.js needs glibc, and Alpine uses musl | Use the Debian tags (the ones without `-alpine`) |
 | `Import-Module Az` is slow | Az loads every service module | Import only what you use, for example `Import-Module Az.Accounts, Az.Resources` |
+| `Import-Module Microsoft.Graph` is slow | It loads about forty modules | Import only what you use, for example `Import-Module Microsoft.Graph.Users` |
+| Ansible fails on a RHEL 8 host with a Python version error | ansible-core 2.17 and later need Python 3.7 or newer on the host | Use `ansible:2.16` for those hosts |
+| A self-hosted runner gets no jobs | GitHub stops sending jobs to a runner 30 days after a newer release | Pull the moving tag again; new runner versions are released automatically |
 
 ## Developing
 
