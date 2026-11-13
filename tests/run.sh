@@ -69,14 +69,25 @@ import http.server, os, ssl
 with open("/tmp/server.pem", "w") as f:
     f.write(os.environ["SERVER_PEM"])
 class Ok(http.server.BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
     def do_GET(self):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
+        self.send_header("Content-Length", "3")
         self.end_headers()
         self.wfile.write(b"ok\n")
     def log_message(self, *args):
         pass
-server = http.server.ThreadingHTTPServer(("0.0.0.0", 8443), Ok)
+class Server(http.server.ThreadingHTTPServer):
+    # Close TLS properly (close_notify): OpenSSL 3 clients report a bare TCP
+    # close as an error.
+    def shutdown_request(self, request):
+        try:
+            request.unwrap()
+        except (OSError, ValueError):
+            pass
+        super().shutdown_request(request)
+server = Server(("0.0.0.0", 8443), Ok)
 context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 context.load_cert_chain("/tmp/server.pem")
 server.socket = context.wrap_socket(server.socket, server_side=True)

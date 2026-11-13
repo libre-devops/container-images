@@ -23,11 +23,12 @@ grep -qF "$(sed -n 2p /tmp/test-ca.pem)" /etc/ssl/certs/ca-certificates.crt ||
 	fail "the test CA is not in /etc/ssl/certs/ca-certificates.crt"
 ok "add-ca-certificates added the test CA to the system bundle"
 
-[ "$(curl -fsS "$TLS_URL")" = ok ] || fail "curl does not trust the test CA"
+body=$(curl -fsS "$TLS_URL") || fail "curl does not trust the test CA"
+[ "$body" = ok ] || fail "curl got '$body' from the test server"
 ok "curl"
 
 out=$(git ls-remote "$TLS_URL" 2>&1 || true)
-if grep -qiE 'certificate|SSL' <<<"$out"; then
+if grep -qi 'certificate' <<<"$out"; then
 	echo "$out" >&2
 	fail "git does not trust the test CA"
 fi
