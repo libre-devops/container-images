@@ -344,6 +344,10 @@ Things to know:
   a newer release.
 - **Jobs run as the agent's user**, so a job can read any credential the agent holds. Scope
   the tokens as above and nothing more.
+- **No npm in the agents' own Node.** The agents run tasks with Node runtimes they bundle,
+  and those come without npm, npx and corepack, which the agents never use and whose
+  dependencies carry known vulnerabilities. A job that needs npm installs Node itself
+  (`actions/setup-node`, or the `NodeTool` task).
 - **No Docker inside.** Jobs that build images or use container actions and service containers
   need a container engine, which these images do not include; give them a Docker-capable
   host or a sidecar.

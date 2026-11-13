@@ -22,8 +22,9 @@ for node in "$runner"/externals/node*/bin/node; do
 	[ -x "$node" ] || continue
 	case $node in */node*_alpine/*) continue ;; esac
 	"$node" --version >/dev/null || fail "$node does not run"
+	[ ! -e "${node%/node}/npm" ] || fail "${node%/node}/npm is still there"
 done
-ok "the runner's Node runtimes run"
+ok "the runner's Node runtimes run, without npm"
 
 out=$(start-runner 2>&1) && fail "start-runner succeeded with no settings"
 grep -q RUNNER_URL <<<"$out" || fail "start-runner did not explain what to set: $out"

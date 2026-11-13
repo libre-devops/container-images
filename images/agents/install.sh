@@ -24,6 +24,15 @@ set -- "$archives"/*.tar.gz
 [ "$#" -eq 1 ] && [ -f "$1" ] || die "expected exactly one tarball in $archives"
 mkdir -p "$dest"
 tar -xzf "$1" -C "$dest"
+# The agents run tasks with the Node runtimes they bundle, but never npm, npx
+# or corepack, whose own bundled dependencies carry known vulnerabilities.
+# Remove them: a job that needs npm installs Node itself (actions/setup-node,
+# the NodeTool task).
+for node in "$dest"/externals/node*; do
+	[ -d "$node" ] || continue
+	rm -rf "$node/lib/node_modules/npm" "$node/lib/node_modules/corepack" \
+		"$node/bin/npm" "$node/bin/npx" "$node/bin/corepack"
+done
 chown -R 10001:0 "$dest"
 chmod -R g=u "$dest"
 install -m 0755 "$start" "/usr/local/bin/$name"

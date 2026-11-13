@@ -22,8 +22,9 @@ for node in "$agent"/externals/node*/bin/node; do
 	[ -x "$node" ] || continue
 	case $node in */node*_alpine/*) continue ;; esac
 	"$node" --version >/dev/null || fail "$node does not run"
+	[ ! -e "${node%/node}/npm" ] || fail "${node%/node}/npm is still there"
 done
-ok "the agent's Node runtimes run"
+ok "the agent's Node runtimes run, without npm"
 
 out=$(start-agent 2>&1) && fail "start-agent succeeded with no settings"
 grep -q AZP_URL <<<"$out" || fail "start-agent did not explain what to set: $out"
