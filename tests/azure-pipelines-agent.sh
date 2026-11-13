@@ -16,8 +16,11 @@ ok "Azure Pipelines agent $EXPECT_AZURE_PIPELINES_AGENT (.NET, ICU and OpenSSL l
 touch "$agent/.write-test" && rm "$agent/.write-test"
 ok "the agent directory is writable"
 
+# The *_alpine builds are musl binaries the agent mounts into Alpine
+# container jobs; they do not run here.
 for node in "$agent"/externals/node*/bin/node; do
 	[ -x "$node" ] || continue
+	case $node in */node*_alpine/*) continue ;; esac
 	"$node" --version >/dev/null || fail "$node does not run"
 done
 ok "the agent's Node runtimes run"

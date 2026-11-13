@@ -16,8 +16,11 @@ ok "GitHub Actions runner $EXPECT_GITHUB_RUNNER (.NET, ICU and OpenSSL load)"
 touch "$runner/.write-test" && rm "$runner/.write-test"
 ok "the runner directory is writable"
 
+# The *_alpine builds are musl binaries the agent mounts into Alpine
+# container jobs; they do not run here.
 for node in "$runner"/externals/node*/bin/node; do
 	[ -x "$node" ] || continue
+	case $node in */node*_alpine/*) continue ;; esac
 	"$node" --version >/dev/null || fail "$node does not run"
 done
 ok "the runner's Node runtimes run"

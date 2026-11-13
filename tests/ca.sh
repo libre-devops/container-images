@@ -72,6 +72,7 @@ fi
 # runtimes current tasks use: Node 20 and later.
 for node in /opt/actions-runner/externals/node*/bin/node /opt/azure-pipelines-agent/externals/node*/bin/node; do
 	[ -x "$node" ] || continue
+	case $node in */node*_alpine/*) continue ;; esac
 	major=$("$node" -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)
 	if [ "$major" -lt 20 ]; then
 		echo "note: skipping $node (Node $major, end of life, for legacy tasks only)"
