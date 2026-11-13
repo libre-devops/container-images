@@ -93,6 +93,8 @@ tools:
   ldo-cli: 0.8.1
   # renovate: datasource=nuget depName=Az registryUrl=https://www.powershellgallery.com/api/v2/
   az-powershell: 16.5.0
+  # renovate: datasource=nuget depName=Microsoft.Graph registryUrl=https://www.powershellgallery.com/api/v2/
+  microsoft-graph: 2.41.2
   # renovate: datasource=nuget depName=Pester registryUrl=https://www.powershellgallery.com/api/v2/
   pester: 6.2.0
   # renovate: datasource=nuget depName=PSScriptAnalyzer registryUrl=https://www.powershellgallery.com/api/v2/
@@ -130,12 +132,19 @@ ci: [uv, shellcheck, shfmt, hadolint, trivy, cosign, zizmor, actionlint]
 #             flavour is tagged with the flavour's name (alpine), and the
 #             entry is addressed as <version>-<flavour> (just build terraform
 #             1.17.1-alpine).
+#   atop      Another image whose stage this entry is built on (its stage
+#             starts FROM ${ATOP}), at that image's latest version, with
+#             everything in it: the agents' toolbox flavours.
+#   contents  This entry's README description, where it differs from the
+#             image's.
 # Each image takes `description`, `contents` (the README description of one
 # entry: {version}, {python}, any tool name and any included image's name,
 # with - as _, are filled in), and optionally `tools`, `os_packages` (logical
 # names for images/common/os-packages.sh), `download` (the version is itself
 # a pinned download), `includes` (other images it is assembled from, at their
-# latest versions) and `tests` (the smoke test suites, default: its name).
+# latest versions), `tests` (the smoke test suites, default: its name, plus
+# those of everything it includes) and `portability` (the portability bases
+# it can run on, default: all).
 # Every image is an `AS <name>` stage in images/Containerfile.
 images:
   python:
@@ -169,10 +178,35 @@ images:
       # renovate: datasource=github-releases depName=hashicorp/terraform extractVersion=^v(?<version>.+)$
       - { version: "1.17.1", base: alpine, flavour: alpine, latest: true, moving: [minor, major] }
 
+  ansible:
+    description: ansible-core and ansible-lint in their own virtual environment, with an SSH client and uv
+    contents: ansible-core {version} on Python {python}, with ansible-lint, jmespath, netaddr, pywinrm and uv {uv}
+    tools: [uv]
+    os_packages: [ssh]
+    versions:
+      # renovate: datasource=pypi depName=ansible-core
+      - { version: "2.22.0", python: "3.14", base: python-3.14, latest: true, moving: [minor] }
+      # Only for managing hosts whose sole Python is 3.6, such as RHEL 8 and its
+      # platform-python, without upgrading their Python first: ansible-core 2.17
+      # and later need Python 3.7 or newer on every managed host. Renovate keeps
+      # this line on 2.16 patch releases. Use the current line for anything else.
+      # renovate: datasource=pypi depName=ansible-core
+      - { version: "2.16.20", python: "3.12", base: python-3.12, moving: [minor], contents: "ansible-core {version} on Python {python}, for hosts whose only Python is 3.6 (RHEL 8): the last line that supports them. With ansible-lint, jmespath, netaddr, pywinrm and uv {uv}" }
+
+  ansible-azure:
+    description: The ansible image with the azure.azcollection collection and its Python requirements
+    contents: azure.azcollection {version} and its Python requirements, on ansible-core {ansible} and Python {python}, with ansible-lint and uv {uv}
+    includes: [ansible]
+    download: azure-azcollection
+    tests: [ansible, ansible-azure]
+    versions:
+      # renovate: datasource=galaxy-collection depName=azure.azcollection
+      - { version: "4.2.0", base: python-3.14, latest: true, moving: [major] }
+
   powershell:
-    description: PowerShell LTS with PSScriptAnalyzer, Pester, Az and LibreDevOpsHelpers
-    contents: PowerShell {version}, Az {az_powershell}, Pester {pester}, PSScriptAnalyzer {psscriptanalyzer}, LibreDevOpsHelpers {libredevopshelpers}
-    tools: [az-powershell, pester, psscriptanalyzer, libredevopshelpers]
+    description: PowerShell LTS with PSScriptAnalyzer, Pester, Az, Microsoft.Graph and LibreDevOpsHelpers
+    contents: PowerShell {version}, Az {az_powershell}, Microsoft.Graph {microsoft_graph}, Pester {pester}, PSScriptAnalyzer {psscriptanalyzer}, LibreDevOpsHelpers {libredevopshelpers}
+    tools: [az-powershell, microsoft-graph, pester, psscriptanalyzer, libredevopshelpers]
     # .NET, which PowerShell runs on, needs ICU, OpenSSL, zlib and libstdc++.
     os_packages: [icu, openssl, zlib, libstdc++]
     download: powershell
@@ -182,10 +216,37 @@ images:
 
   toolbox:
     description: Every tool above in one image, for ease
-    contents: Python {python} and uv {uv}, Azure CLI {azure_cli}, ldo-cli {ldo_cli}, Terraform {terraform} by default (tenv {tenv}), TFLint {tflint}, terraform-docs {terraform_docs}, Conftest {conftest}, PowerShell {powershell} with Az {az_powershell}, Pester {pester}, PSScriptAnalyzer {psscriptanalyzer} and LibreDevOpsHelpers {libredevopshelpers}
+    contents: Python {python} and uv {uv}, Azure CLI {azure_cli}, ldo-cli {ldo_cli}, Terraform {terraform} by default (tenv {tenv}), TFLint {tflint}, terraform-docs {terraform_docs}, Conftest {conftest}, PowerShell {powershell} with Az {az_powershell}, Microsoft.Graph {microsoft_graph}, Pester {pester}, PSScriptAnalyzer {psscriptanalyzer} and LibreDevOpsHelpers {libredevopshelpers}
     # Assembled from the latest version of each, on the Azure CLI's Python.
     includes: [azure-cli, terraform, powershell]
     tools: [uv]
     tests: [python, azure-cli, terraform, powershell]
     versions:
       - { version: "1", base: python-3.12, latest: true }
+
+  # Self-hosted CI agents. Each registers itself from environment variables
+  # when the container starts (see the README), runs one job and exits unless
+  # told otherwise. The toolbox flavour adds everything in the toolbox image.
+  azure-pipelines-agent:
+    description: A self-hosted Azure Pipelines agent that registers itself from environment variables
+    contents: Azure Pipelines agent {version}, with git, curl, jq, ShellCheck and shfmt
+    download: azure-pipelines-agent
+    os_packages: [icu, openssl, zlib, libstdc++, krb5]
+    versions:
+      # renovate: datasource=github-releases depName=microsoft/azure-pipelines-agent extractVersion=^v(?<version>.+)$
+      - { version: "5.281.1", base: debian, latest: true, moving: [major] }
+      # renovate: datasource=github-releases depName=microsoft/azure-pipelines-agent extractVersion=^v(?<version>.+)$
+      - { version: "5.281.1", base: python-3.12, flavour: toolbox, atop: toolbox, latest: true, moving: [major], contents: "Azure Pipelines agent {version} with everything in toolbox {toolbox}: Azure CLI {azure_cli}, Terraform {terraform}, PowerShell {powershell} with Az and Microsoft.Graph, Python {python}" }
+
+  github-runner:
+    description: A self-hosted GitHub Actions runner that registers itself from environment variables
+    contents: GitHub Actions runner {version}, with git, curl, jq, ShellCheck and shfmt
+    download: github-runner
+    os_packages: [icu, openssl, zlib, libstdc++, krb5]
+    # GitHub publishes no musl build of the runner, so not Alpine.
+    portability: [rhel, rhel-minimal, wolfi]
+    versions:
+      # renovate: datasource=github-releases depName=actions/runner extractVersion=^v(?<version>.+)$
+      - { version: "2.338.2", base: debian, latest: true, moving: [major] }
+      # renovate: datasource=github-releases depName=actions/runner extractVersion=^v(?<version>.+)$
+      - { version: "2.338.2", base: python-3.12, flavour: toolbox, atop: toolbox, latest: true, moving: [major], contents: "GitHub Actions runner {version} with everything in toolbox {toolbox}: Azure CLI {azure_cli}, Terraform {terraform}, PowerShell {powershell} with Az and Microsoft.Graph, Python {python}" }

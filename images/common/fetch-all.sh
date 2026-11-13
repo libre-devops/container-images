@@ -1,8 +1,8 @@
 #!/bin/sh
 # Fetches every pinned download a build asked for, each into its own root
 # under <dir> so that later stages copy exactly the ones they need:
-# <dir>/common (ShellCheck and jq, in every image), <dir>/uv, <dir>/ldo-cli
-# and <dir>/powershell. A download is asked for by setting its <TOOL>_ASSET
+# <dir>/common (ShellCheck and jq, in every image), <dir>/uv, <dir>/ldo-cli,
+# <dir>/powershell, <dir>/azure-azcollection and the CI agents. A download is asked for by setting its <TOOL>_ASSET
 # build argument; the others are skipped.
 #
 # Usage: fetch-all.sh <dir>
@@ -14,7 +14,7 @@ lib=$(dirname "$0")
 
 sh "$lib/fetch-tool.sh" "$dir/common" shellcheck "${SHELLCHECK_ASSET:?}"
 sh "$lib/fetch-tool.sh" "$dir/common" jq "${JQ_ASSET:?}"
-for tool in uv ldo-cli powershell; do
+for tool in uv ldo-cli powershell azure-azcollection azure-pipelines-agent github-runner; do
 	var=$(echo "$tool" | tr 'a-z-' 'A-Z_')_ASSET
 	eval "spec=\${$var:-}"
 	if [ -n "$spec" ]; then

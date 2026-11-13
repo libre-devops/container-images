@@ -75,16 +75,22 @@ candidates() {
 	apt-get:libstdc++) echo libstdc++6 ;;
 	apt-get:openssl) echo libssl3t64 libssl3 ;;
 	apt-get:shadow) echo passwd ;;
+	apt-get:ssh) echo openssh-client ;;
+	apt-get:krb5) echo libgssapi-krb5-2 ;;
 	apt-get:xz) echo xz-utils ;;
 	apt-get:zlib) echo zlib1g ;;
 	dnf:git | microdnf:git) echo git-core git ;;
 	dnf:icu | microdnf:icu) echo libicu ;;
 	dnf:openssl | microdnf:openssl) echo openssl-libs ;;
 	dnf:shadow | microdnf:shadow) echo shadow-utils ;;
+	dnf:ssh | microdnf:ssh) echo openssh-clients ;;
+	dnf:krb5 | microdnf:krb5) echo krb5-libs ;;
 	dnf:zlib | microdnf:zlib) echo zlib-ng-compat zlib ;;
 	apk:ca-certificates) echo ca-certificates ca-certificates-bundle ;;
 	apk:icu) echo icu-libs icu ;;
 	apk:openssl) echo libssl3 openssl ;;
+	apk:ssh) echo openssh-client ;;
+	apk:krb5) echo krb5-libs ;;
 	*) echo "$1" ;;
 	esac
 }

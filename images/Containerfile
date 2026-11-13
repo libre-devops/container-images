@@ -14,12 +14,17 @@
 #               raising every dependency with a known vulnerability to its fixed
 #               version.
 #   base        The base image, upgraded, with the shared packages, the app
-#               user and the tools every image has.
-#   python, azure-cli, terraform, powershell
+#               user, the tools every image has, and a trust store that every
+#               tool uses (add-ca-certificates adds an organisation's CA).
+#   python, ansible, ansible-azure, azure-cli, terraform, powershell
 #               The images, each on base.
 #   toolbox     Everything, assembled from the stages above.
+#   azure-pipelines-agent, github-runner
+#               Self-hosted CI agents, on the stage named by ATOP: base, or
+#               toolbox for their toolbox flavours.
 
 ARG BASE_IMAGE
+ARG ATOP=base
 
 FROM ${BASE_IMAGE} AS fetch
 # A build stage only: nothing from it runs as root in an image.
@@ -30,6 +35,9 @@ ARG JQ_ASSET
 ARG UV_ASSET=""
 ARG LDO_CLI_ASSET=""
 ARG POWERSHELL_ASSET=""
+ARG AZURE_AZCOLLECTION_ASSET=""
+ARG AZURE_PIPELINES_AGENT_ASSET=""
+ARG GITHUB_RUNNER_ASSET=""
 RUN --mount=type=bind,source=images,target=/src \
     sh /src/common/os-packages.sh ca-certificates curl tar gzip xz \
     && sh /src/common/fetch-all.sh /fetched
@@ -58,6 +66,13 @@ RUN --mount=type=bind,source=images,target=/src \
     sh /src/common/setup.sh
 COPY --from=fetch /fetched/common/ /
 COPY --from=go /built/shfmt/ /
+# Every tool trusts the operating system's store, which setup.sh makes
+# available at this one path on every base, so a CA added to it with
+# add-ca-certificates is trusted everywhere: requests and pip (Python), uv,
+# and Node (the CI agents run their tasks with it) included.
+ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
+    NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt \
+    UV_NATIVE_TLS=true
 
 FROM base AS python
 ARG PYTHON_MINOR
@@ -66,6 +81,38 @@ RUN --mount=type=bind,source=images,target=/src \
     sh /src/common/ensure-python.sh "${PYTHON_MINOR}" /usr/local/bin/uv \
     && sh /src/common/finalise.sh
 ENV HOME=/home/app \
+    PYTHONUNBUFFERED=1
+USER 10001:10001
+WORKDIR /work
+CMD ["bash"]
+
+FROM base AS ansible
+ARG PYTHON_MINOR
+ARG ANSIBLE_LOCK
+COPY --from=fetch /fetched/uv/ /
+RUN --mount=type=bind,source=images,target=/src \
+    sh /src/common/ensure-python.sh "${PYTHON_MINOR}" /usr/local/bin/uv \
+    && sh /src/ansible/install.sh /usr/local/bin/uv "/src/${ANSIBLE_LOCK}" \
+    && sh /src/common/finalise.sh
+# ansible-core refuses to run unless the locale encoding is UTF-8.
+ENV HOME=/home/app \
+    LANG=C.UTF-8 \
+    PYTHONUNBUFFERED=1
+USER 10001:10001
+WORKDIR /work
+CMD ["bash"]
+
+FROM base AS ansible-azure
+ARG PYTHON_MINOR
+ARG ANSIBLE_LOCK
+COPY --from=fetch /fetched/uv/ /
+RUN --mount=type=bind,source=images,target=/src \
+    --mount=type=bind,from=fetch,source=/fetched,target=/fetched \
+    sh /src/common/ensure-python.sh "${PYTHON_MINOR}" /usr/local/bin/uv \
+    && sh /src/ansible/install.sh /usr/local/bin/uv "/src/${ANSIBLE_LOCK}" /fetched/azure-azcollection/collections \
+    && sh /src/common/finalise.sh
+ENV HOME=/home/app \
+    LANG=C.UTF-8 \
     PYTHONUNBUFFERED=1
 USER 10001:10001
 WORKDIR /work
@@ -107,6 +154,7 @@ CMD ["bash"]
 
 FROM base AS powershell
 ARG AZ_POWERSHELL_VERSION
+ARG MICROSOFT_GRAPH_VERSION
 ARG PESTER_VERSION
 ARG PSSCRIPTANALYZER_VERSION
 ARG LIBREDEVOPSHELPERS_VERSION
@@ -149,3 +197,33 @@ ENV HOME=/home/app
 USER 10001:10001
 WORKDIR /work
 CMD ["bash"]
+
+# The agents unpack into a directory they own, since they write their
+# registration and their jobs' work there. Each starts with its start script,
+# which registers it from environment variables.
+FROM ${ATOP} AS azure-pipelines-agent
+# Installs as root, then runs as the app user like every image.
+# hadolint ignore=DL3002
+USER 0
+RUN --mount=type=bind,source=images,target=/src \
+    --mount=type=bind,from=fetch,source=/fetched,target=/fetched \
+    sh /src/agents/install.sh /fetched/azure-pipelines-agent/archive /opt/azure-pipelines-agent \
+        /src/agents/azure-pipelines-agent.sh start-agent \
+    && sh /src/common/finalise.sh
+ENV HOME=/home/app
+USER 10001:10001
+WORKDIR /work
+CMD ["start-agent"]
+
+FROM ${ATOP} AS github-runner
+# hadolint ignore=DL3002
+USER 0
+RUN --mount=type=bind,source=images,target=/src \
+    --mount=type=bind,from=fetch,source=/fetched,target=/fetched \
+    sh /src/agents/install.sh /fetched/github-runner/archive /opt/actions-runner \
+        /src/agents/github-runner.sh start-runner \
+    && sh /src/common/finalise.sh
+ENV HOME=/home/app
+USER 10001:10001
+WORKDIR /work
+CMD ["start-runner"]
