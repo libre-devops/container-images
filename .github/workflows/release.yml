@@ -18,14 +18,15 @@ name: Release
 on:
   push:
     branches: [main]
+    # Only changes to what goes into the images release. Changes to the
+    # workflows (Renovate's action bumps among them) change no image, so they
+    # wait for Monday's release rather than rebuilding everything.
     paths-ignore:
       - "**.md"
       - releases.json
       - LICENSE
       - renovate.json
-      - .github/workflows/build.yml
-      - .github/workflows/pins.yml
-      - .github/workflows/scan.yml
+      - .github/**
   schedule:
     - cron: "0 3 * * 1" # Mondays at 03:00 UTC
   workflow_dispatch:
