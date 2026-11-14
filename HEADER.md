@@ -49,7 +49,7 @@ Docker Hub from the same digest.
 
 ## Overview
 
-Ten images, each a thin layer of pinned tools on a hardened base:
+Eleven images, each a thin layer of pinned tools on a hardened base:
 
 - **`python`**: CPython and uv, with one tag for every supported CPython from 3.12 upwards.
 - **`ansible`**: ansible-core and ansible-lint in their own virtual environment, with
@@ -72,10 +72,14 @@ Ten images, each a thin layer of pinned tools on a hardened base:
   [LibreDevOpsHelpers](https://github.com/libre-devops/powershell-helpers).
 - **`toolbox`**: Python, the Azure CLI, Terraform and PowerShell in one image, assembled from
   the same build stages.
+- **`podman`**: Podman set up to run rootless inside a container (Podman in Podman, or in
+  Docker or Kubernetes), with a `docker` command that runs it. `azure-cli`, `terraform` and
+  `toolbox` also come as `-podman` flavours built on it, for CI jobs that build and push images
+  (see [Podman in a container](#podman-in-a-container)).
 - **`azure-pipelines-agent`** and **`github-runner`**: self-hosted CI agents that register
   themselves from environment variables and run one job per container. Each also comes as a
-  `toolbox` flavour with every toolbox tool in it (see
-  [Self-hosted CI agents](#self-hosted-ci-agents)).
+  `toolbox` flavour with every toolbox tool in it, and a `toolbox-podman` flavour that adds
+  Podman, so jobs can build images (see [Self-hosted CI agents](#self-hosted-ci-agents)).
 
 What every image guarantees:
 
@@ -119,6 +123,7 @@ cosign verify ghcr.io/libre-devops/terraform:1 \
 | Terraform for Azure in an air-gapped or restricted network | `azure-terraform` | azurerm, azapi and msgraph install from a local mirror, with no registry |
 | Ansible playbooks against Azure | `ansible-azure` | The Azure collection and its many Python libraries, already installed and patched |
 | Ansible for hosts whose only Python is 3.6, such as RHEL 8 | `ansible:2.16` | ansible-core 2.17 and later cannot manage them; see [Ansible](#ansible) |
+| Building and pushing images in a CI job, without Docker or a privileged container | `podman`, or a `-podman` flavour such as `azure-cli:podman` or `toolbox:podman` | Rootless Podman inside the container; see [Podman in a container](#podman-in-a-container) |
 | Self-hosted Azure Pipelines agents or GitHub Actions runners | `azure-pipelines-agent`, `github-runner` | Ephemeral by default; the `toolbox` tags carry every toolbox tool |
 | Several tool families in one job, or an interactive shell | `toolbox` | Everything together; the largest image (the Az PowerShell modules and the Azure CLI dominate its size) |
 | A specific CPython | `python:<major.minor>` | One tag per supported CPython |
@@ -152,7 +157,8 @@ Every release records its digests in this README and in
 | `azure-terraform` | The current `terraform`, with the newest three minor releases of azurerm, azapi and msgraph |
 | `powershell` | The current PowerShell LTS |
 | `toolbox` | The latest `azure-cli`, `terraform` and `powershell`, with the Azure CLI's Python |
-| `azure-pipelines-agent`, `github-runner` | The current agent release, on its own and atop `toolbox` |
+| `podman` | Podman 5 from the distribution, and `-podman` flavours of the latest `azure-cli`, `terraform` and `toolbox` |
+| `azure-pipelines-agent`, `github-runner` | The current agent release, on its own, atop `toolbox`, and atop `toolbox` with Podman |
 
 **Support.** A version is supported while it is listed in `versions.yml`: its moving tags are
 rebuilt weekly and whenever a fix is available. When a version leaves `versions.yml` (for
@@ -220,6 +226,37 @@ steps:
       docker run --rm --user "$(id -u):0" -v "$(Build.SourcesDirectory):/work"
       ghcr.io/libre-devops/powershell:lts pwsh -File ./build.ps1
 ```
+
+### Podman in a container
+
+The `podman` image and the `-podman` flavours run Podman rootless, as the `app` user, inside
+the container: no Docker socket, and no `--privileged`. The container needs `/dev/fuse` (for
+fuse-overlayfs), and from Docker no seccomp or AppArmor filtering of the user namespaces and
+mounts Podman makes:
+
+```sh
+# Podman on the host
+podman run --rm --device /dev/fuse --security-opt label=disable \
+  ghcr.io/libre-devops/podman:5 podman build -t example .
+
+# Docker on the host
+docker run --rm --device /dev/fuse --security-opt seccomp=unconfined \
+  --security-opt apparmor=unconfined --security-opt label=disable \
+  ghcr.io/libre-devops/toolbox:podman podman build -t example .
+```
+
+- **Ubuntu 23.10 and later hosts** keep unprivileged user namespaces from processes without an
+  AppArmor profile, Podman in a container included: allow them with
+  `sysctl kernel.apparmor_restrict_unprivileged_userns=0`.
+- **Kubernetes** needs `/dev/fuse` in the pod (a device plugin, or a `hostPath` volume) and a
+  pod that may create user namespaces; on most clusters the simplest is a pod with
+  `privileged: true` running as uid 10001.
+- **Run as uid 10001.** Rootless Podman needs the user's subordinate ids, which `app` has; an
+  arbitrary uid has none.
+- **Builds** isolate `RUN` steps with chroot (`BUILDAH_ISOLATION=chroot`), and nested containers
+  share the outer container's network, so they reach what it reaches.
+- **`docker`** is a command that runs Podman, so scripts that call `docker build` and
+  `docker push` work. Tools that talk to a Docker daemon over its socket do not.
 
 ### azure-terraform
 
@@ -361,9 +398,10 @@ Things to know:
   and those come without npm, npx and corepack, which the agents never use and whose
   dependencies carry known vulnerabilities. A job that needs npm installs Node itself
   (`actions/setup-node`, or the `NodeTool` task).
-- **No Docker inside.** Jobs that build images or use container actions and service containers
-  need a container engine, which these images do not include; give them a Docker-capable
-  host or a sidecar.
+- **Building images in jobs.** The `toolbox-podman` tags add rootless Podman and a `docker`
+  command that runs it, so jobs can build, run and push images; start the agent with the flags
+  in [Podman in a container](#podman-in-a-container). Container jobs and service containers,
+  which the agents run through a Docker daemon, are not supported.
 - **glibc only for the runner.** GitHub publishes no musl build, so there is no Alpine flavour.
 
 ## Configuration reference
@@ -395,6 +433,7 @@ Set by the images; override any of them with `-e` or your CI system's environmen
 | `NODE_EXTRA_CA_CERTS` | `/etc/ssl/certs/ca-certificates.crt` | all | Node.js, which the CI agents run tasks with, trusts the system store too |
 | `UV_NATIVE_TLS` | `true` | all | uv uses the system trust store rather than its own |
 | `LANG` | `C.UTF-8` | `ansible`, `ansible-azure` | ansible-core refuses to run without a UTF-8 locale |
+| `BUILDAH_ISOLATION` | `chroot` | `podman`, `-podman` flavours | `podman build` isolates `RUN` steps with chroot, which works inside a container |
 | `TF_CLI_CONFIG_FILE` | `/usr/local/share/terraform/airgapped.tfrc` | `azure-terraform` | Mirrored providers install from the mirror; `registry.tfrc` uses the registry for everything |
 | `PYTHONUNBUFFERED` | `1` | `python`, `azure-cli`, `toolbox` | Unbuffered output in CI logs |
 | `AZURE_CORE_COLLECT_TELEMETRY` | `no` | `azure-cli`, `toolbox` | No Azure CLI telemetry |
@@ -612,6 +651,8 @@ request, so either edit stays safe. If a hardened variant you need does not exis
 | `Import-Module Microsoft.Graph` is slow | It loads about forty modules | Import only what you use, for example `Import-Module Microsoft.Graph.Users` |
 | `azure-terraform`: `Failed to query available provider packages` or `no available releases match` for azurerm, azapi or msgraph | The constraints exclude every mirrored version | Loosen the constraint, or use the registry: `TF_CLI_CONFIG_FILE=/usr/local/share/terraform/registry.tfrc` |
 | Ansible fails on a RHEL 8 host with a Python version error | ansible-core 2.17 and later need Python 3.7 or newer on the host | Use `ansible:2.16` for those hosts |
+| `newuidmap: write to uid_map failed` or `cannot set up namespace` from Podman in a container | User namespaces are blocked: Docker's seccomp or AppArmor profile, or Ubuntu's `apparmor_restrict_unprivileged_userns` | Start the container with the flags in [Podman in a container](#podman-in-a-container), and on Ubuntu hosts set the sysctl there |
+| `fuse: device not found` from Podman in a container | No `/dev/fuse` | Add `--device /dev/fuse` |
 | A self-hosted runner gets no jobs | GitHub stops sending jobs to a runner 30 days after a newer release | Pull the moving tag again; new runner versions are released automatically |
 
 ## Developing

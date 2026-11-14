@@ -204,6 +204,7 @@ class Entry:
     aliases: tuple[str, ...]
     flavour: str | None = None
     atop: str | None = None  # another image whose stage this one is built on
+    base_stage: str | None = None  # the stage every image stage starts from, if not base
     contents: str | None = None  # this entry's README description, if not the image's
 
     @property
@@ -279,6 +280,7 @@ class Config:
                         aliases=tuple(item.get("aliases") or ()),
                         flavour=item.get("flavour"),
                         atop=item.get("atop"),
+                        base_stage=item.get("base_stage"),
                         contents=item.get("contents"),
                     )
                 )
@@ -305,6 +307,7 @@ class Config:
         out = {entry.id: entry}
         names = list(self.images[entry.image].get("includes") or [])
         names += [entry.atop] if entry.atop else []
+        names += [entry.base_stage] if entry.base_stage else []
         for name in names:
             for c in self.components(self.entry(name)):
                 out.setdefault(c.id, c)
@@ -1454,6 +1457,8 @@ def cmd_validate(cfg: Config) -> None:
         for e in entries:
             if e.atop and (e.atop not in cfg.images or e.atop == name):
                 problems.append(f"{e.id}: atop '{e.atop}' is not another image")
+            if e.base_stage and (e.base_stage not in cfg.images or e.base_stage == name or cfg.images[e.base_stage].get("includes")):
+                problems.append(f"{e.id}: base_stage '{e.base_stage}' is not another plain image")
             if e.base_key not in cfg.bases:
                 problems.append(f"{e.id}: base '{e.base_key}' is not under bases")
             for kind in e.moving:
@@ -1494,6 +1499,8 @@ def build_args(cfg: Config, entry: Entry, base: str | None = None) -> dict[str, 
     args = {"BASE_IMAGE": cfg.resolve_base(base, entry)}
     if entry.atop:
         args["ATOP"] = entry.atop
+    if entry.base_stage:
+        args["BASE_STAGE"] = entry.base_stage
     if minor := cfg.python_minor(entry):
         args["PYTHON_MINOR"] = minor
     for c in cfg.components(entry):
@@ -1534,6 +1541,10 @@ def test_env(cfg: Config, entry: Entry) -> dict[str, str]:
             env[f"EXPECT_{arg_name(c.image)}"] = c.version
     for tool in cfg.tools_for(entry):
         env[f"EXPECT_{arg_name(tool)}"] = cfg.tools[tool]
+    if any(c.image == "podman" for c in cfg.components(entry)):
+        # What the Podman suite pulls, runs and builds on: small, pinned, and
+        # from a registry without Docker Hub's pull limits.
+        env["PODMAN_TEST_IMAGE"] = cfg.portability["wolfi"]
     if providers := cfg.providers(entry):
         env["EXPECT_TERRAFORM_PROVIDERS"] = " ".join(f"{src}={','.join(vs)}" for src, vs in providers.items())
     return env

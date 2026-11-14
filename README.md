@@ -50,7 +50,7 @@ Docker Hub from the same digest.
 
 ## Overview
 
-Ten images, each a thin layer of pinned tools on a hardened base:
+Eleven images, each a thin layer of pinned tools on a hardened base:
 
 - **`python`**: CPython and uv, with one tag for every supported CPython from 3.12 upwards.
 - **`ansible`**: ansible-core and ansible-lint in their own virtual environment, with
@@ -73,10 +73,14 @@ Ten images, each a thin layer of pinned tools on a hardened base:
   [LibreDevOpsHelpers](https://github.com/libre-devops/powershell-helpers).
 - **`toolbox`**: Python, the Azure CLI, Terraform and PowerShell in one image, assembled from
   the same build stages.
+- **`podman`**: Podman set up to run rootless inside a container (Podman in Podman, or in
+  Docker or Kubernetes), with a `docker` command that runs it. `azure-cli`, `terraform` and
+  `toolbox` also come as `-podman` flavours built on it, for CI jobs that build and push images
+  (see [Podman in a container](#podman-in-a-container)).
 - **`azure-pipelines-agent`** and **`github-runner`**: self-hosted CI agents that register
   themselves from environment variables and run one job per container. Each also comes as a
-  `toolbox` flavour with every toolbox tool in it (see
-  [Self-hosted CI agents](#self-hosted-ci-agents)).
+  `toolbox` flavour with every toolbox tool in it, and a `toolbox-podman` flavour that adds
+  Podman, so jobs can build images (see [Self-hosted CI agents](#self-hosted-ci-agents)).
 
 What every image guarantees:
 
@@ -116,20 +120,26 @@ cosign verify ghcr.io/libre-devops/terraform:1 \
 | `python` | `3.13`<br>`3.13-YYYYMMDD` | `dhi.io/python:3.13-debian13-dev` | CPython 3.13, uv 0.13.7 | `ghcr.io/libre-devops/python:3.13`<br>`docker.io/libredevops/python:3.13` |
 | `python` | `3.14`<br>`3.14-YYYYMMDD` | `dhi.io/python:3.14-debian13-dev` | CPython 3.14, uv 0.13.7 | `ghcr.io/libre-devops/python:3.14`<br>`docker.io/libredevops/python:3.14` |
 | `python` | `3.15` `3` `latest`<br>`3.15-YYYYMMDD` | `dhi.io/python:3.15-debian13-dev` | CPython 3.15, uv 0.13.7 | `ghcr.io/libre-devops/python:3.15`<br>`docker.io/libredevops/python:3.15` |
+| `podman` | `5` `latest`<br>`5-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | Podman 5 from the distribution, with crun, fuse-overlayfs and a docker command, rootless for the app user | `ghcr.io/libre-devops/podman:5`<br>`docker.io/libredevops/podman:5` |
 | `azure-cli` | `2.92.0` `latest`<br>`2.92.0-py3.12-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | Azure CLI 2.92.0 on Python 3.12, ldo-cli 0.8.1 | `ghcr.io/libre-devops/azure-cli:2.92.0`<br>`docker.io/libredevops/azure-cli:2.92.0` |
+| `azure-cli` | `2.92.0-podman` `podman`<br>`2.92.0-py3.12-podman-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | Azure CLI 2.92.0 on Python 3.12, ldo-cli 0.8.1 | `ghcr.io/libre-devops/azure-cli:2.92.0-podman`<br>`docker.io/libredevops/azure-cli:2.92.0-podman` |
 | `azure-cli` | `2.72.0`<br>`2.72.0-py3.12-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | Azure CLI 2.72.0 on Python 3.12, ldo-cli 0.8.1 | `ghcr.io/libre-devops/azure-cli:2.72.0`<br>`docker.io/libredevops/azure-cli:2.72.0` |
 | `terraform` | `1.17.1` `1.17` `1` `latest`<br>`1.17.1-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | Terraform 1.17.1 by default (tenv 4.15.1; a repository's .terraform-version wins), TFLint 0.65.0, terraform-docs 0.24.0, Conftest 0.71.1 | `ghcr.io/libre-devops/terraform:1.17.1`<br>`docker.io/libredevops/terraform:1.17.1` |
 | `terraform` | `1.17.1-alpine` `1.17-alpine` `1-alpine` `alpine`<br>`1.17.1-alpine-YYYYMMDD` | `dhi.io/alpine-base:3.24-alpine3.24-dev` | Terraform 1.17.1 by default (tenv 4.15.1; a repository's .terraform-version wins), TFLint 0.65.0, terraform-docs 0.24.0, Conftest 0.71.1 | `ghcr.io/libre-devops/terraform:1.17.1-alpine`<br>`docker.io/libredevops/terraform:1.17.1-alpine` |
+| `terraform` | `1.17.1-podman` `1.17-podman` `1-podman` `podman`<br>`1.17.1-podman-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | Terraform 1.17.1 by default (tenv 4.15.1; a repository's .terraform-version wins), TFLint 0.65.0, terraform-docs 0.24.0, Conftest 0.71.1 | `ghcr.io/libre-devops/terraform:1.17.1-podman`<br>`docker.io/libredevops/terraform:1.17.1-podman` |
 | `ansible` | `2.22.0` `2.22` `latest`<br>`2.22.0-py3.14-YYYYMMDD` | `dhi.io/python:3.14-debian13-dev` | ansible-core 2.22.0 on Python 3.14, with ansible-lint, jmespath, netaddr, pywinrm, OpenSSH 10.6p2 and uv 0.13.7 | `ghcr.io/libre-devops/ansible:2.22.0`<br>`docker.io/libredevops/ansible:2.22.0` |
 | `ansible` | `2.16.20` `2.16`<br>`2.16.20-py3.12-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | ansible-core 2.16.20 on Python 3.12, for hosts whose only Python is 3.6 (RHEL 8): the last line that supports them. With ansible-lint, jmespath, netaddr, pywinrm, OpenSSH 10.6p2 and uv 0.13.7 | `ghcr.io/libre-devops/ansible:2.16.20`<br>`docker.io/libredevops/ansible:2.16.20` |
 | `ansible-azure` | `4.2.0` `4` `latest`<br>`4.2.0-YYYYMMDD` | `dhi.io/python:3.14-debian13-dev` | azure.azcollection 4.2.0 and its Python requirements, on ansible-core 2.22.0 and Python 3.14, with ansible-lint, OpenSSH 10.6p2 and uv 0.13.7 | `ghcr.io/libre-devops/ansible-azure:4.2.0`<br>`docker.io/libredevops/ansible-azure:4.2.0` |
 | `azure-terraform` | `1.17.1` `1.17` `1` `latest`<br>`1.17.1-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | Terraform 1.17.1 by default, TFLint 0.65.0, terraform-docs 0.24.0, Conftest 0.71.1; in a local provider mirror, azurerm 5.13.0, 5.12.0, 5.11.0, azapi 2.13.0, 2.12.0, 2.11.0 and msgraph 0.6.0, 0.5.0, 0.4.0 | `ghcr.io/libre-devops/azure-terraform:1.17.1`<br>`docker.io/libredevops/azure-terraform:1.17.1` |
 | `powershell` | `7.6.9` `7.6` `7` `lts` `latest`<br>`7.6.9-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | PowerShell 7.6.9, Az 16.5.0, Microsoft.Graph 2.41.2, Pester 6.2.0, PSScriptAnalyzer 1.25.0, LibreDevOpsHelpers 3.0.1 | `ghcr.io/libre-devops/powershell:7.6.9`<br>`docker.io/libredevops/powershell:7.6.9` |
 | `toolbox` | `1` `latest`<br>`1-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | Python 3.12 and uv 0.13.7, Azure CLI 2.92.0, ldo-cli 0.8.1, Terraform 1.17.1 by default (tenv 4.15.1), TFLint 0.65.0, terraform-docs 0.24.0, Conftest 0.71.1, PowerShell 7.6.9 with Az 16.5.0, Microsoft.Graph 2.41.2, Pester 6.2.0, PSScriptAnalyzer 1.25.0 and LibreDevOpsHelpers 3.0.1 | `ghcr.io/libre-devops/toolbox:1`<br>`docker.io/libredevops/toolbox:1` |
+| `toolbox` | `1-podman` `podman`<br>`1-podman-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | Python 3.12 and uv 0.13.7, Azure CLI 2.92.0, ldo-cli 0.8.1, Terraform 1.17.1 by default (tenv 4.15.1), TFLint 0.65.0, terraform-docs 0.24.0, Conftest 0.71.1, PowerShell 7.6.9 with Az 16.5.0, Microsoft.Graph 2.41.2, Pester 6.2.0, PSScriptAnalyzer 1.25.0 and LibreDevOpsHelpers 3.0.1 | `ghcr.io/libre-devops/toolbox:1-podman`<br>`docker.io/libredevops/toolbox:1-podman` |
 | `azure-pipelines-agent` | `5.281.1` `5` `latest`<br>`5.281.1-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | Azure Pipelines agent 5.281.1, with git, curl, jq, ShellCheck and shfmt | `ghcr.io/libre-devops/azure-pipelines-agent:5.281.1`<br>`docker.io/libredevops/azure-pipelines-agent:5.281.1` |
 | `azure-pipelines-agent` | `5.281.1-toolbox` `5-toolbox` `toolbox`<br>`5.281.1-toolbox-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | Azure Pipelines agent 5.281.1 with everything in toolbox 1: Azure CLI 2.92.0, Terraform 1.17.1, PowerShell 7.6.9 with Az and Microsoft.Graph, Python 3.12 | `ghcr.io/libre-devops/azure-pipelines-agent:5.281.1-toolbox`<br>`docker.io/libredevops/azure-pipelines-agent:5.281.1-toolbox` |
+| `azure-pipelines-agent` | `5.281.1-toolbox-podman` `5-toolbox-podman` `toolbox-podman`<br>`5.281.1-toolbox-podman-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | Azure Pipelines agent 5.281.1 with everything in toolbox 1 and Podman 5, which jobs can use to build and run images (rootless; see the README for the outer container's flags) | `ghcr.io/libre-devops/azure-pipelines-agent:5.281.1-toolbox-podman`<br>`docker.io/libredevops/azure-pipelines-agent:5.281.1-toolbox-podman` |
 | `github-runner` | `2.338.2` `2` `latest`<br>`2.338.2-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | GitHub Actions runner 2.338.2, with git, curl, jq, ShellCheck and shfmt | `ghcr.io/libre-devops/github-runner:2.338.2`<br>`docker.io/libredevops/github-runner:2.338.2` |
 | `github-runner` | `2.338.2-toolbox` `2-toolbox` `toolbox`<br>`2.338.2-toolbox-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | GitHub Actions runner 2.338.2 with everything in toolbox 1: Azure CLI 2.92.0, Terraform 1.17.1, PowerShell 7.6.9 with Az and Microsoft.Graph, Python 3.12 | `ghcr.io/libre-devops/github-runner:2.338.2-toolbox`<br>`docker.io/libredevops/github-runner:2.338.2-toolbox` |
+| `github-runner` | `2.338.2-toolbox-podman` `2-toolbox-podman` `toolbox-podman`<br>`2.338.2-toolbox-podman-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | GitHub Actions runner 2.338.2 with everything in toolbox 1 and Podman 5, which jobs can use to build and run images (rootless; see the README for the outer container's flags) | `ghcr.io/libre-devops/github-runner:2.338.2-toolbox-podman`<br>`docker.io/libredevops/github-runner:2.338.2-toolbox-podman` |
 
 Every image also has bash, git, curl, ca-certificates, ShellCheck 0.11.0, shfmt 3.14.1, jq 1.8.2, runs as `app` (uid 10001) in `/work`, and is a multi-platform image for linux/amd64 and linux/arm64. The Go tools are built from source with Go 1.27.3.
 
@@ -141,6 +151,7 @@ Every image also has bash, git, curl, ca-certificates, ShellCheck 0.11.0, shfmt 
 | Terraform for Azure in an air-gapped or restricted network | `azure-terraform` | azurerm, azapi and msgraph install from a local mirror, with no registry |
 | Ansible playbooks against Azure | `ansible-azure` | The Azure collection and its many Python libraries, already installed and patched |
 | Ansible for hosts whose only Python is 3.6, such as RHEL 8 | `ansible:2.16` | ansible-core 2.17 and later cannot manage them; see [Ansible](#ansible) |
+| Building and pushing images in a CI job, without Docker or a privileged container | `podman`, or a `-podman` flavour such as `azure-cli:podman` or `toolbox:podman` | Rootless Podman inside the container; see [Podman in a container](#podman-in-a-container) |
 | Self-hosted Azure Pipelines agents or GitHub Actions runners | `azure-pipelines-agent`, `github-runner` | Ephemeral by default; the `toolbox` tags carry every toolbox tool |
 | Several tool families in one job, or an interactive shell | `toolbox` | Everything together; the largest image (the Az PowerShell modules and the Azure CLI dominate its size) |
 | A specific CPython | `python:<major.minor>` | One tag per supported CPython |
@@ -174,7 +185,8 @@ Every release records its digests in this README and in
 | `azure-terraform` | The current `terraform`, with the newest three minor releases of azurerm, azapi and msgraph |
 | `powershell` | The current PowerShell LTS |
 | `toolbox` | The latest `azure-cli`, `terraform` and `powershell`, with the Azure CLI's Python |
-| `azure-pipelines-agent`, `github-runner` | The current agent release, on its own and atop `toolbox` |
+| `podman` | Podman 5 from the distribution, and `-podman` flavours of the latest `azure-cli`, `terraform` and `toolbox` |
+| `azure-pipelines-agent`, `github-runner` | The current agent release, on its own, atop `toolbox`, and atop `toolbox` with Podman |
 
 **Support.** A version is supported while it is listed in `versions.yml`: its moving tags are
 rebuilt weekly and whenever a fix is available. When a version leaves `versions.yml` (for
@@ -242,6 +254,37 @@ steps:
       docker run --rm --user "$(id -u):0" -v "$(Build.SourcesDirectory):/work"
       ghcr.io/libre-devops/powershell:lts pwsh -File ./build.ps1
 ```
+
+### Podman in a container
+
+The `podman` image and the `-podman` flavours run Podman rootless, as the `app` user, inside
+the container: no Docker socket, and no `--privileged`. The container needs `/dev/fuse` (for
+fuse-overlayfs), and from Docker no seccomp or AppArmor filtering of the user namespaces and
+mounts Podman makes:
+
+```sh
+# Podman on the host
+podman run --rm --device /dev/fuse --security-opt label=disable \
+  ghcr.io/libre-devops/podman:5 podman build -t example .
+
+# Docker on the host
+docker run --rm --device /dev/fuse --security-opt seccomp=unconfined \
+  --security-opt apparmor=unconfined --security-opt label=disable \
+  ghcr.io/libre-devops/toolbox:podman podman build -t example .
+```
+
+- **Ubuntu 23.10 and later hosts** keep unprivileged user namespaces from processes without an
+  AppArmor profile, Podman in a container included: allow them with
+  `sysctl kernel.apparmor_restrict_unprivileged_userns=0`.
+- **Kubernetes** needs `/dev/fuse` in the pod (a device plugin, or a `hostPath` volume) and a
+  pod that may create user namespaces; on most clusters the simplest is a pod with
+  `privileged: true` running as uid 10001.
+- **Run as uid 10001.** Rootless Podman needs the user's subordinate ids, which `app` has; an
+  arbitrary uid has none.
+- **Builds** isolate `RUN` steps with chroot (`BUILDAH_ISOLATION=chroot`), and nested containers
+  share the outer container's network, so they reach what it reaches.
+- **`docker`** is a command that runs Podman, so scripts that call `docker build` and
+  `docker push` work. Tools that talk to a Docker daemon over its socket do not.
 
 ### azure-terraform
 
@@ -383,9 +426,10 @@ Things to know:
   and those come without npm, npx and corepack, which the agents never use and whose
   dependencies carry known vulnerabilities. A job that needs npm installs Node itself
   (`actions/setup-node`, or the `NodeTool` task).
-- **No Docker inside.** Jobs that build images or use container actions and service containers
-  need a container engine, which these images do not include; give them a Docker-capable
-  host or a sidecar.
+- **Building images in jobs.** The `toolbox-podman` tags add rootless Podman and a `docker`
+  command that runs it, so jobs can build, run and push images; start the agent with the flags
+  in [Podman in a container](#podman-in-a-container). Container jobs and service containers,
+  which the agents run through a Docker daemon, are not supported.
 - **glibc only for the runner.** GitHub publishes no musl build, so there is no Alpine flavour.
 
 ## Configuration reference
@@ -417,6 +461,7 @@ Set by the images; override any of them with `-e` or your CI system's environmen
 | `NODE_EXTRA_CA_CERTS` | `/etc/ssl/certs/ca-certificates.crt` | all | Node.js, which the CI agents run tasks with, trusts the system store too |
 | `UV_NATIVE_TLS` | `true` | all | uv uses the system trust store rather than its own |
 | `LANG` | `C.UTF-8` | `ansible`, `ansible-azure` | ansible-core refuses to run without a UTF-8 locale |
+| `BUILDAH_ISOLATION` | `chroot` | `podman`, `-podman` flavours | `podman build` isolates `RUN` steps with chroot, which works inside a container |
 | `TF_CLI_CONFIG_FILE` | `/usr/local/share/terraform/airgapped.tfrc` | `azure-terraform` | Mirrored providers install from the mirror; `registry.tfrc` uses the registry for everything |
 | `PYTHONUNBUFFERED` | `1` | `python`, `azure-cli`, `toolbox` | Unbuffered output in CI logs |
 | `AZURE_CORE_COLLECT_TELEMETRY` | `no` | `azure-cli`, `toolbox` | No Azure CLI telemetry |
@@ -653,6 +698,8 @@ request, so either edit stays safe. If a hardened variant you need does not exis
 | `Import-Module Microsoft.Graph` is slow | It loads about forty modules | Import only what you use, for example `Import-Module Microsoft.Graph.Users` |
 | `azure-terraform`: `Failed to query available provider packages` or `no available releases match` for azurerm, azapi or msgraph | The constraints exclude every mirrored version | Loosen the constraint, or use the registry: `TF_CLI_CONFIG_FILE=/usr/local/share/terraform/registry.tfrc` |
 | Ansible fails on a RHEL 8 host with a Python version error | ansible-core 2.17 and later need Python 3.7 or newer on the host | Use `ansible:2.16` for those hosts |
+| `newuidmap: write to uid_map failed` or `cannot set up namespace` from Podman in a container | User namespaces are blocked: Docker's seccomp or AppArmor profile, or Ubuntu's `apparmor_restrict_unprivileged_userns` | Start the container with the flags in [Podman in a container](#podman-in-a-container), and on Ubuntu hosts set the sysctl there |
+| `fuse: device not found` from Podman in a container | No `/dev/fuse` | Add `--device /dev/fuse` |
 | A self-hosted runner gets no jobs | GitHub stops sending jobs to a runner 30 days after a newer release | Pull the moving tag again; new runner versions are released automatically |
 
 ## Developing
