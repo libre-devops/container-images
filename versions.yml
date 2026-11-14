@@ -184,8 +184,9 @@ images:
     description: Podman that runs rootless inside a container (Podman in Podman, or in Docker or Kubernetes), with a docker command; the base of every -podman flavour
     contents: Podman {version} from the distribution, with crun, fuse-overlayfs and a docker command, rootless for the app user
     os_packages: [podman, crun, fuse-overlayfs, uidmap, libcap, "passt?", "docker-shim?"]
-    # Red Hat's UBI repositories carry no Podman.
-    portability: [alpine, wolfi]
+    # Neither Red Hat's UBI nor Docker Hardened Images' Alpine repositories
+    # carry Podman.
+    portability: [wolfi]
     versions:
       - { version: "5", base: debian, latest: true }
 

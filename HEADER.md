@@ -801,7 +801,7 @@ You need Docker or Podman, [just](https://just.systems) and [uv](https://docs.as
 | Workflow | Runs on | Does | Publishes |
 | --- | --- | --- | --- |
 | [Build](./.github/workflows/build.yml) | Every pull request; started by Pins and Release | Check, build every version for both platforms, smoke test, scan; portability builds; merge the pull requests Pins and Release open, once they pass | No |
-| [Release](./.github/workflows/release.yml) | Merges to `main` (Build starts it after merging the pins refresh), Mondays 03:00 UTC, on demand, and Scan | Build once per platform, test and scan the pushed digest, tag both registries, sign, open a pull request with the new digests | Yes |
+| [Release](./.github/workflows/release.yml) | Merges to `main` that change the images, not only docs or workflows (Build starts it after merging the pins refresh), Mondays 03:00 UTC, on demand, and Scan | Build once per platform, test and scan the pushed digest, tag both registries, sign, open a pull request with the new digests | Yes |
 | [Pins](./.github/workflows/pins.yml) | Pull requests that change `versions.yml`; daily 02:00 UTC | Repin and patch on the branch and re-run Build; daily, refresh base digests and patches as a pull request, and re-run Build on it | No |
 | [Scan](./.github/workflows/scan.yml) | Daily 06:00 UTC | Rescan every published image, report to the Security tab, rebuild if needed | No |
 
