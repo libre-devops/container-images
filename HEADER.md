@@ -804,6 +804,7 @@ You need Docker or Podman, [just](https://just.systems) and [uv](https://docs.as
 | [Release](./.github/workflows/release.yml) | Merges to `main` that change the images, not only docs or workflows (Build starts it after merging the pins refresh), Mondays 03:00 UTC, on demand, and Scan | Build once per platform, test and scan the pushed digest, tag both registries, sign, open a pull request with the new digests | Yes |
 | [Pins](./.github/workflows/pins.yml) | Pull requests that change `versions.yml`; daily 02:00 UTC | Repin and patch on the branch and re-run Build; daily, refresh base digests and patches as a pull request, and re-run Build on it | No |
 | [Scan](./.github/workflows/scan.yml) | Daily 06:00 UTC | Rescan every published image, report to the Security tab, rebuild if needed | No |
+| [Retry](./.github/workflows/retry.yml) | A Build, Release, Pins or Scan run that fails | Re-run its failed jobs once, so a flaky registry or network heals by itself; a second failure stands | No |
 
 ### Adding a version
 
