@@ -67,8 +67,7 @@ Ten images, each a thin layer of pinned tools on a hardened base:
   (`-alpine` tags), about a third smaller.
 - **`azure-terraform`**: the `terraform` image with the azurerm, azapi and msgraph providers
   (the newest three minor releases of each) in a local mirror, so `terraform init` needs no
-  registry for them, and the Terraform Stacks plugin cached for `terraform stacks` (see
-  [azure-terraform](#azure-terraform)).
+  registry for them (see [azure-terraform](#azure-terraform)).
 - **`powershell`**: PowerShell LTS with PSScriptAnalyzer, Pester, Az, Microsoft.Graph and
   [LibreDevOpsHelpers](https://github.com/libre-devops/powershell-helpers).
 - **`toolbox`**: Python, the Azure CLI, Terraform and PowerShell in one image, assembled from
@@ -246,11 +245,10 @@ docker run --rm -v "$PWD:/work" ghcr.io/libre-devops/azure-terraform:1 terraform
   provider's signed release when it was pinned, and again when the image was built.
 - **Other Terraform versions** from a `.terraform-version` still download on demand; set
   `TENV_AUTO_INSTALL=false` offline and use the default.
-- **Terraform Stacks.** `terraform stacks` runs a plugin, `tfstacks`, which Terraform normally
-  downloads on first use. The image has it cached in `~/.terraform.d/stacksplugin`, so Terraform
-  only fetches a small manifest and skips the download while the manifest names the cached
-  version. Stacks always needs HCP Terraform, or your Terraform Enterprise host through
-  `TF_STACKS_HOSTNAME`: Terraform contacts it before every `terraform stacks` command.
+- **Terraform Stacks.** `terraform stacks` downloads its plugin, `tfstacks`, on first use, and
+  always needs HCP Terraform or your Terraform Enterprise host (`TF_STACKS_HOSTNAME`). The image
+  does not carry the plugin: its current release (1.4.0) is built with a Go version that has
+  fixable high vulnerabilities, so it fails the scan gate.
 
 ### Ansible
 

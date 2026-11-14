@@ -43,9 +43,8 @@ ARG POWERSHELL_ASSET=""
 ARG AZURE_AZCOLLECTION_ASSET=""
 ARG AZURE_PIPELINES_AGENT_ASSET=""
 ARG GITHUB_RUNNER_ASSET=""
-ARG TFSTACKS_ASSET=""
 RUN --mount=type=bind,source=images,target=/src \
-    sh /src/common/os-packages.sh ca-certificates curl tar gzip xz unzip \
+    sh /src/common/os-packages.sh ca-certificates curl tar gzip xz \
     && sh /src/common/fetch-all.sh /fetched
 
 FROM ${BASE_IMAGE} AS go
@@ -229,12 +228,9 @@ CMD ["bash"]
 FROM ${ATOP} AS azure-terraform
 # hadolint ignore=DL3002
 USER 0
-ARG TFSTACKS_VERSION
 COPY --from=terraform-providers /mirror/ /usr/local/share/terraform/providers/
 RUN --mount=type=bind,source=images,target=/src \
-    --mount=type=bind,from=fetch,source=/fetched,target=/fetched \
     sh /src/terraform/cli-configs.sh /usr/local/share/terraform \
-    && sh /src/terraform/stacks-plugin.sh /fetched/tfstacks/usr/local/bin/tfstacks "${TFSTACKS_VERSION}" /home/app \
     && sh /src/common/finalise.sh
 ENV HOME=/home/app \
     TF_CLI_CONFIG_FILE=/usr/local/share/terraform/airgapped.tfrc

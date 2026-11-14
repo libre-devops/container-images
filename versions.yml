@@ -85,9 +85,6 @@ tools:
   tenv: 4.15.1
   # renovate: datasource=github-releases depName=terraform-linters/tflint extractVersion=^v(?<version>.+)$
   tflint: 0.65.0
-  # The Terraform Stacks plugin, cached in azure-terraform for terraform stacks.
-  # renovate: datasource=custom.hashicorp-releases depName=tfstacks
-  tfstacks: 1.4.0
   # renovate: datasource=github-releases depName=terraform-docs/terraform-docs extractVersion=^v(?<version>.+)$
   terraform-docs: 0.24.0
   # renovate: datasource=github-releases depName=open-policy-agent/conftest extractVersion=^v(?<version>.+)$
@@ -227,9 +224,8 @@ images:
       - { version: "4.2.0", base: python-3.14, latest: true, moving: [major] }
 
   azure-terraform:
-    description: The terraform image with the azurerm, azapi and msgraph providers in a local mirror, for terraform init without the registry, and the Terraform Stacks plugin
-    contents: "Terraform {version} by default, TFLint {tflint}, terraform-docs {terraform_docs}, Conftest {conftest}; in a local provider mirror, azurerm {azurerm}, azapi {azapi} and msgraph {msgraph}; the Terraform Stacks plugin {tfstacks}, cached"
-    tools: [tfstacks]
+    description: The terraform image with the azurerm, azapi and msgraph providers in a local mirror, for terraform init without the registry
+    contents: "Terraform {version} by default, TFLint {tflint}, terraform-docs {terraform_docs}, Conftest {conftest}; in a local provider mirror, azurerm {azurerm}, azapi {azapi} and msgraph {msgraph}"
     provider_mirror: true
     versions:
       # renovate: datasource=github-releases depName=hashicorp/terraform extractVersion=^v(?<version>.+)$

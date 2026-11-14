@@ -129,7 +129,7 @@ GALAXY_COLLECTIONS = {"azure-azcollection": "azure.azcollection"}
 OPENSSH_CDN = "https://cdn.openbsd.org/pub/OpenBSD/OpenSSH"
 OPENSSH_RELEASE_KEY = "7168B983815A5EEF59A4ADFD2A3F414E736060BA"
 # HashiCorp signs its releases' SHA256SUMS (Terraform providers in the
-# hashicorp namespace, tfstacks) with this key. Microsoft signs azapi and
+# hashicorp namespace) with this key. Microsoft signs azapi and
 # msgraph with its registry partner key. A provider is pinned only once the
 # checksums for its release verify against its namespace's key here.
 HASHICORP_KEY = "C874011F0AB405110D02105534365D9472D7468F"
@@ -143,7 +143,6 @@ PROVIDER_MIN_AGE_DAYS = 3
 OTHER_DOWNLOADS: dict[str, tuple[str, ...]] = {
     "go": GO_ARCHES,
     "openssh": ("any",),
-    "tfstacks": GO_ARCHES,
     "azure-pipelines-agent": tuple(AZURE_PIPELINES_AGENT),
     **{name: ("any",) for name in GALAXY_COLLECTIONS},
 }
@@ -600,22 +599,6 @@ def sums_entry(sums: bytes, filename: str) -> str:
     raise Failure(f"no checksum for {filename}")
 
 
-def pin_tfstacks(version: str) -> dict:
-    """tfstacks from releases.hashicorp.com, once its SHA256SUMS verify against
-    HashiCorp's key."""
-    base = f"https://releases.hashicorp.com/tfstacks/{version}"
-    sums = fetch_bytes(f"{base}/tfstacks_{version}_SHA256SUMS")
-    key = fetch_bytes("https://www.hashicorp.com/.well-known/pgp-key.txt")
-    if not gpg_verified(sums, fetch_bytes(f"{base}/tfstacks_{version}_SHA256SUMS.sig"), key, HASHICORP_KEY):
-        raise Failure(f"the checksums of tfstacks {version} are not signed by HashiCorp's key {HASHICORP_KEY}")
-    pinned = {}
-    for arch in GO_ARCHES:
-        filename = f"tfstacks_{version}_linux_{arch}.zip"
-        pinned[arch] = {"url": f"{base}/{filename}", "sha256": sums_entry(sums, filename)}
-        note(f"  tfstacks {version} {arch}: {pinned[arch]['sha256']}")
-    return pinned
-
-
 def pin_provider(source: str, version: str) -> dict:
     """A Terraform provider release for each platform, from the registry, once
     its SHA256SUMS verify against the key PROVIDER_KEYS names for its namespace."""
@@ -677,8 +660,6 @@ def pin_download(tool: str, version: str, token: str | None) -> dict:
         return pin_go_toolchain(version)
     if tool == "openssh":
         return pin_openssh(version)
-    if tool == "tfstacks":
-        return pin_tfstacks(version)
     if tool == "azure-pipelines-agent":
         return pin_azure_pipelines_agent(version, token)
     if tool in GALAXY_COLLECTIONS:
@@ -1504,8 +1485,8 @@ def cmd_validate(cfg: Config) -> None:
 
 
 # Tools a build installs by version rather than from a pinned download: the
-# PowerShell modules, and tfstacks, whose cached copy records its version.
-VERSION_ARG_TOOLS = ("az-powershell", "microsoft-graph", "pester", "psscriptanalyzer", "libredevopshelpers", "tfstacks")
+# PowerShell modules.
+VERSION_ARG_TOOLS = ("az-powershell", "microsoft-graph", "pester", "psscriptanalyzer", "libredevopshelpers")
 
 
 def build_args(cfg: Config, entry: Entry, base: str | None = None) -> dict[str, str]:

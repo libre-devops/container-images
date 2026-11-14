@@ -14,7 +14,7 @@ lib=$(dirname "$0")
 
 sh "$lib/fetch-tool.sh" "$dir/common" shellcheck "${SHELLCHECK_ASSET:?}"
 sh "$lib/fetch-tool.sh" "$dir/common" jq "${JQ_ASSET:?}"
-for tool in uv ldo-cli powershell azure-azcollection azure-pipelines-agent github-runner tfstacks; do
+for tool in uv ldo-cli powershell azure-azcollection azure-pipelines-agent github-runner; do
 	var=$(echo "$tool" | tr 'a-z-' 'A-Z_')_ASSET
 	eval "spec=\${$var:-}"
 	if [ -n "$spec" ]; then

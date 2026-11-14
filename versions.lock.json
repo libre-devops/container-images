@@ -357,18 +357,6 @@
         }
       }
     },
-    "tfstacks": {
-      "1.4.0": {
-        "amd64": {
-          "sha256": "0bf905fae38df1613fb04957ab08b2f0924c05fd64d2adcae8bbd6736fea4316",
-          "url": "https://releases.hashicorp.com/tfstacks/1.4.0/tfstacks_1.4.0_linux_amd64.zip"
-        },
-        "arm64": {
-          "sha256": "1884a28d34c8e1299dcd6dfa1580cb674dd4278c792da22e6576d5d51c703aa5",
-          "url": "https://releases.hashicorp.com/tfstacks/1.4.0/tfstacks_1.4.0_linux_arm64.zip"
-        }
-      }
-    },
     "trivy": {
       "0.76.2": {
         "amd64": {

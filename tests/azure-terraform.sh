@@ -9,17 +9,6 @@ fail() {
 }
 ok() { echo "ok: $*"; }
 
-case $(uname -m) in
-x86_64) arch=amd64 ;;
-*) arch=arm64 ;;
-esac
-plugin=$HOME/.terraform.d/stacksplugin/bin/linux_$arch
-[ "$(cat "$plugin/.version")" = "$EXPECT_TFSTACKS" ] || fail "the cached Stacks plugin is not $EXPECT_TFSTACKS"
-# Captured first: grep -q in a pipe can end it early, and pipefail then sees SIGPIPE.
-out=$("$plugin/tfstacks" 2>&1 || true)
-grep -q 'This binary is a plugin' <<<"$out" || fail "$plugin/tfstacks does not run: $out"
-ok "the Terraform Stacks plugin $EXPECT_TFSTACKS is cached for terraform stacks"
-
 [ "$TF_CLI_CONFIG_FILE" = /usr/local/share/terraform/airgapped.tfrc ] || fail "TF_CLI_CONFIG_FILE is $TF_CLI_CONFIG_FILE"
 
 # The nth version of every provider, in one configuration.
