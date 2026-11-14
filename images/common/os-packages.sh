@@ -38,12 +38,17 @@ if [ "${1:-}" = --upgrade ]; then
 fi
 
 export DEBIAN_FRONTEND=noninteractive
+# apt-get, retrying a download that fails (a mirror's 5xx or a dropped
+# connection); dnf retries by default.
+aptget() {
+	apt-get -o Acquire::Retries=5 "$@"
+}
 log=$(mktemp)
 trap 'rm -f "$log"' EXIT
 
 install_package() {
 	case $pm in
-	apt-get) apt-get install -y -qq --no-install-recommends "$@" ;;
+	apt-get) aptget install -y -qq --no-install-recommends "$@" ;;
 	dnf) dnf install -y -q --setopt=install_weak_deps=False --nodocs "$@" ;;
 	microdnf) microdnf install -y --setopt=install_weak_deps=0 --nodocs "$@" ;;
 	apk) apk add --no-cache -q "$@" ;;
@@ -52,7 +57,7 @@ install_package() {
 
 upgrade_all() {
 	case $pm in
-	apt-get) apt-get upgrade -y -qq ;;
+	apt-get) aptget upgrade -y -qq ;;
 	dnf) dnf upgrade -y -q ;;
 	microdnf) microdnf upgrade -y ;;
 	apk) apk upgrade --no-cache -q ;;
@@ -110,7 +115,7 @@ candidates() {
 }
 
 if [ "$pm" = apt-get ]; then
-	apt-get update -qq
+	aptget update -qq
 fi
 if $upgrade; then
 	upgrade_all

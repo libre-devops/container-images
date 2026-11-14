@@ -195,7 +195,7 @@ ENV TENV_ROOT=/home/app/.tenv \
     CHECKPOINT_DISABLE=1
 # tenv checks the HashiCorp signature and checksums of what it downloads.
 RUN --mount=type=bind,source=images,target=/src \
-    tenv tf install "${TERRAFORM_VERSION}" \
+    sh /src/common/retry.sh tenv tf install "${TERRAFORM_VERSION}" \
     && tenv tf use "${TERRAFORM_VERSION}" \
     && sh /src/common/finalise.sh
 ENV HOME=/home/app
