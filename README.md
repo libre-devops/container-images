@@ -19,9 +19,9 @@ Thin, hardened, version-pinned images for CI jobs and tooling: built from pinned
 Docker Hardened Images, scanned before and after publishing, signed, and published to GHCR and
 Docker Hub from the same digest.
 
-[![Build](https://github.com/libre-devops/container-images/actions/workflows/build.yml/badge.svg)](https://github.com/libre-devops/container-images/actions/workflows/build.yml)
-[![Release](https://github.com/libre-devops/container-images/actions/workflows/release.yml/badge.svg)](https://github.com/libre-devops/container-images/actions/workflows/release.yml)
-[![Scan](https://github.com/libre-devops/container-images/actions/workflows/scan.yml/badge.svg)](https://github.com/libre-devops/container-images/actions/workflows/scan.yml)
+[![Build](https://github.com/libre-devops/container-images/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/libre-devops/container-images/actions/workflows/build.yml)
+[![Release](https://github.com/libre-devops/container-images/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/libre-devops/container-images/actions/workflows/release.yml)
+[![Scan](https://github.com/libre-devops/container-images/actions/workflows/scan.yml/badge.svg?branch=main)](https://github.com/libre-devops/container-images/actions/workflows/scan.yml)
 [![Licence](https://img.shields.io/github/license/libre-devops/container-images?label=licence)](./LICENSE)
 [![GHCR](https://img.shields.io/badge/GHCR-libre--devops-2088FF?logo=github&logoColor=white)](https://github.com/orgs/libre-devops/packages?repo_name=container-images)
 [![Docker Hub](https://img.shields.io/badge/Docker%20Hub-libredevops-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/u/libredevops)
@@ -884,7 +884,7 @@ You need Docker or Podman, [just](https://just.systems) and [uv](https://docs.as
 
 | Workflow | Runs on | Does | Publishes |
 | --- | --- | --- | --- |
-| [Build](./.github/workflows/build.yml) | Every pull request; started by Pins and Release | Check, build every version for both platforms, smoke test, scan; merge the pull requests Pins and Release open, once they pass | No |
+| [Build](./.github/workflows/build.yml) | Every pull request; started by Pins and Release; pushes to `main` (the check only) | Check, build every version for both platforms, smoke test, scan; merge the pull requests Pins and Release open, once they pass | No |
 | [Release](./.github/workflows/release.yml) | Merges to `main` that change the images, not only docs or workflows (Build starts it after merging the pins refresh), Mondays 03:00 UTC, on demand, and Scan | Build once per platform, test and scan the pushed digest, tag both registries, sign, open a pull request with the new digests | Yes |
 | [Pins](./.github/workflows/pins.yml) | Pull requests that change `versions.yml`; daily 02:00 UTC | Repin and patch on the branch and re-run Build; daily, refresh base digests and patches as a pull request, and re-run Build on it | No |
 | [Scan](./.github/workflows/scan.yml) | Daily 06:00 UTC | Rescan every published image, report to the Security tab, rebuild if needed | No |

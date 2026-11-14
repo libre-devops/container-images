@@ -2,7 +2,8 @@ name: Build
 
 # Pull requests: validate the pins, lint, then build every image version for
 # every platform on native runners, smoke test it and scan it. Nothing is
-# pushed. The portability bases are tested every two weeks by the Portability
+# pushed. Pushes to main run only the check (validate, lint, README current), so
+# that the README's Build badge says whether main passes it. The portability bases are tested every two weeks by the Portability
 # workflow, not here.
 #
 # Also started by the Pins and Release workflows (workflow_dispatch) after they
@@ -13,6 +14,8 @@ name: Build
 
 on:
   pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions: {}
@@ -49,6 +52,7 @@ jobs:
   build:
     name: Build ${{ matrix.id }} ${{ matrix.arch }}
     needs: check
+    if: github.event_name != 'push'
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
@@ -109,10 +113,16 @@ jobs:
       - name: Fail if any job failed
         env:
           RESULTS: ${{ join(needs.*.result, ' ') }}
+          EVENT: ${{ github.event_name }}
         run: |
           echo "Results: $RESULTS"
           for result in $RESULTS; do
-            [ "$result" = success ] || exit 1
+            case $result in
+            success) ;;
+            # A push to main runs only the check; the builds are skipped.
+            skipped) [ "$EVENT" = push ] || exit 1 ;;
+            *) exit 1 ;;
+            esac
           done
 
   # Runs only when every job above passed. Merges exactly the commit that was
