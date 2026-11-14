@@ -422,7 +422,7 @@ Every one of them is tested on every pull request the same way: inside the conta
 | Where it runs | Start it with |
 | --- | --- |
 | Podman | `--device /dev/fuse`, and on SELinux hosts (RHEL, Fedora) `--security-opt label=disable` |
-| Docker | `--device /dev/fuse --security-opt seccomp=unconfined --security-opt apparmor=unconfined`, and `--security-opt label=disable` on SELinux hosts |
+| Docker | `--device /dev/fuse --security-opt seccomp=unconfined --security-opt apparmor=unconfined --security-opt systempaths=unconfined`, and `--security-opt label=disable` on SELinux hosts |
 | Kubernetes | `/dev/fuse` and user namespaces: `privileged: true`, or a pod in its own user namespace with a device plugin for `/dev/fuse` (see [Kubernetes](#kubernetes)) |
 
 Also:
@@ -449,6 +449,7 @@ podman run --rm --device /dev/fuse --security-opt label=disable \
 # Docker on the host
 docker run --rm --device /dev/fuse --security-opt label=disable \
   --security-opt seccomp=unconfined --security-opt apparmor=unconfined \
+  --security-opt systempaths=unconfined \
   -v "$PWD:/work" ghcr.io/libre-devops/toolbox:podman \
   podman build -t registry.example.com/team/app:1 .
 ```
@@ -466,6 +467,7 @@ steps:
     run: >-
       docker run --rm --device /dev/fuse --security-opt label=disable
       --security-opt seccomp=unconfined --security-opt apparmor=unconfined
+      --security-opt systempaths=unconfined
       -v "$PWD:/work" -e TOKEN -e IMAGE ghcr.io/libre-devops/podman:5
       bash -c 'echo "$TOKEN" | podman login ghcr.io -u token --password-stdin &&
                podman build -t "$IMAGE" . && podman push "$IMAGE"'
@@ -477,6 +479,7 @@ A self-hosted Azure Pipelines agent whose jobs can build images (see
 ```sh
 docker run -d --restart always --device /dev/fuse --security-opt label=disable \
   --security-opt seccomp=unconfined --security-opt apparmor=unconfined \
+  --security-opt systempaths=unconfined \
   -e AZP_URL=https://dev.azure.com/contoso -e AZP_POOL=containers \
   -e AZP_TOKEN_FILE=/run/secrets/azp-token -v "$PWD/azp-token:/run/secrets/azp-token:ro" \
   ghcr.io/libre-devops/azure-pipelines-agent:toolbox-podman
@@ -818,6 +821,7 @@ request, so either edit stays safe. If a hardened variant you need does not exis
 | `Import-Module Microsoft.Graph` is slow | It loads about forty modules | Import only what you use, for example `Import-Module Microsoft.Graph.Users` |
 | `azure-terraform`: `Failed to query available provider packages` or `no available releases match` for azurerm, azapi or msgraph | The constraints exclude every mirrored version | Loosen the constraint, or use the registry: `TF_CLI_CONFIG_FILE=/usr/local/share/terraform/registry.tfrc` |
 | Ansible fails on a RHEL 8 host with a Python version error | ansible-core 2.17 and later need Python 3.7 or newer on the host | Use `ansible:2.16` for those hosts |
+| `crun: mount proc to proc: Operation not permitted` from Podman in a container | Docker masks parts of `/proc`, and the kernel then refuses nested containers their own | Add `--security-opt systempaths=unconfined` (Docker) or `--security-opt unmask=ALL` (Podman) |
 | `newuidmap: write to uid_map failed` or `cannot set up namespace` from Podman in a container | User namespaces are blocked: Docker's seccomp or AppArmor profile, or Ubuntu's `apparmor_restrict_unprivileged_userns` | Start the container with the flags in [Podman in a container](#podman-in-a-container), and on Ubuntu hosts set the sysctl there |
 | `fuse: device not found` from Podman in a container | No `/dev/fuse` | Add `--device /dev/fuse` |
 | A self-hosted runner gets no jobs | GitHub stops sending jobs to a runner 30 days after a newer release | Pull the moving tag again; new runner versions are released automatically |
