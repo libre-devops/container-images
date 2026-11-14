@@ -48,14 +48,12 @@
       }
     },
     "tflint": {
-      "0.65.0": {
+      "0.66.0": {
         "module": "github.com/terraform-linters/tflint",
         "overrides": {
-          "github.com/go-jose/go-jose/v4": "v4.1.6",
           "go.opentelemetry.io/otel/sdk": "v1.47.0",
           "go.opentelemetry.io/otel/trace": "v1.47.0",
-          "golang.org/x/crypto": "v0.59.0",
-          "golang.org/x/net": "v0.62.0"
+          "golang.org/x/crypto": "v0.59.0"
         }
       }
     }
@@ -222,22 +220,22 @@
       }
     },
     "azure-pipelines-agent": {
-      "5.281.1": {
+      "5.282.0": {
         "amd64": {
-          "sha256": "c9579f76fd71a013e3b9010155454e20592d935134e4fcd04adc5283a820167e",
-          "url": "https://download.agent.dev.azure.com/agent/5.281.1/vsts-agent-linux-x64-5.281.1.tar.gz"
+          "sha256": "d7a8f9cc0241dbd2d1b26b7ee225ca518fd07e62176aa04668ef1a90a9e41188",
+          "url": "https://download.agent.dev.azure.com/agent/5.282.0/vsts-agent-linux-x64-5.282.0.tar.gz"
         },
         "amd64-musl": {
-          "sha256": "431e7c1012979835e9b4c776c79d6e3e3db90a2a07086e7a07d195ca5fe3b2ca",
-          "url": "https://download.agent.dev.azure.com/agent/5.281.1/vsts-agent-linux-musl-x64-5.281.1.tar.gz"
+          "sha256": "e92eec1cb8b131a84171e58767e82009f70ecd4ff619d561ed965fbe7904d465",
+          "url": "https://download.agent.dev.azure.com/agent/5.282.0/vsts-agent-linux-musl-x64-5.282.0.tar.gz"
         },
         "arm64": {
-          "sha256": "80319aaf824a2091eb521cfdcfcd10fd79c0f7eea4eb3de1908b5c42620ef349",
-          "url": "https://download.agent.dev.azure.com/agent/5.281.1/vsts-agent-linux-arm64-5.281.1.tar.gz"
+          "sha256": "aafb00197384cfb9923e8c969205991d3a5b88d84b3be39257ebe8e5e89b47a8",
+          "url": "https://download.agent.dev.azure.com/agent/5.282.0/vsts-agent-linux-arm64-5.282.0.tar.gz"
         },
         "arm64-musl": {
-          "sha256": "aa42b93044ad89d4c39d21a9bc83648afe7857dbdf4574445518425cd08330e2",
-          "url": "https://download.agent.dev.azure.com/agent/5.281.1/vsts-agent-linux-musl-arm64-5.281.1.tar.gz"
+          "sha256": "302f3ed83a189f6e0d6fe41a1d98d09a51c942cebb18d15ac7f7d7952055668c",
+          "url": "https://download.agent.dev.azure.com/agent/5.282.0/vsts-agent-linux-musl-arm64-5.282.0.tar.gz"
         }
       }
     },
@@ -266,14 +264,14 @@
       }
     },
     "go": {
-      "1.27.3": {
+      "1.27.4": {
         "amd64": {
-          "sha256": "65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40",
-          "url": "https://go.dev/dl/go1.27.3.linux-amd64.tar.gz"
+          "sha256": "7226736c2339719cda28fbf3a54d71aa63bcefe376e98cef00034268dab24840",
+          "url": "https://go.dev/dl/go1.27.4.linux-amd64.tar.gz"
         },
         "arm64": {
-          "sha256": "a06e99309dbcbdca1a8ccd2282c3ee146e55930886e26b4f1193269587165f49",
-          "url": "https://go.dev/dl/go1.27.3.linux-arm64.tar.gz"
+          "sha256": "3392582988a273a87ab5043ee1b2c9c17a2c3c00580bf9326c47a2e0aaaeac92",
+          "url": "https://go.dev/dl/go1.27.4.linux-arm64.tar.gz"
         }
       }
     },
@@ -318,18 +316,18 @@
       }
     },
     "powershell": {
-      "7.6.9": {
+      "7.6.10": {
         "amd64": {
-          "sha256": "1da6d6d6035d651f20e70ddee7c4c15ac6ab8b9fb40ee92240d91263f28a884b",
-          "url": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.9/powershell-7.6.9-linux-x64.tar.gz"
+          "sha256": "e261cabc91c78a9afe8d1e5f24731ab0d38204735ab2ec94b0af55102652e10d",
+          "url": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.10/powershell-7.6.10-linux-x64.tar.gz"
         },
         "amd64-musl": {
-          "sha256": "f83df6705edaae07db970dcc6c34ad6583d33a2f6199f1b55cdc5354fbb9001c",
-          "url": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.9/powershell-7.6.9-linux-musl-x64.tar.gz"
+          "sha256": "5b31557a9a99471692ba9733e058294fb2ea9e50419ac5acb74c0fd278c3d9e0",
+          "url": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.10/powershell-7.6.10-linux-musl-x64.tar.gz"
         },
         "arm64": {
-          "sha256": "02eb9991af447c7e7fe881acde195961afd397c40b8eb1c2b3856b84ec2d85f2",
-          "url": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.9/powershell-7.6.9-linux-arm64.tar.gz"
+          "sha256": "439432cdecf4418413b9a8f547e3ab4d9b40e8e4258913ec3d15fc92c67a9235",
+          "url": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.10/powershell-7.6.10-linux-arm64.tar.gz"
         }
       }
     },
