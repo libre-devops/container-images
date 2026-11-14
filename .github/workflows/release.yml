@@ -148,6 +148,11 @@ jobs:
           # upgrade in every image runs afresh each week.
           no-cache: true
           cache-to: type=gha,mode=max,scope=${{ matrix.id }}-${{ matrix.arch }}
+      # Ubuntu 23.10 and later keep unprivileged user namespaces from processes
+      # without an AppArmor profile, which includes Podman inside a container.
+      # Lift that for the Podman in Podman smoke tests (see the README).
+      - name: Allow user namespaces for Podman in a container
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
       - name: Smoke test the pushed digest
         env:
           DIGEST: ${{ steps.build.outputs.digest }}

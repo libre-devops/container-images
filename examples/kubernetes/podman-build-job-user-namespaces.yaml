@@ -1,0 +1,71 @@
+# The same build without privileged, for clusters that run pods in their own
+# user namespace (hostUsers: false; Kubernetes 1.33 and later, with a runtime
+# and kernel that support it) and offer /dev/fuse through a device plugin.
+# This example asks for squat.ai/fuse, from
+# https://github.com/squat/generic-device-plugin configured for /dev/fuse;
+# use the resource name your cluster's plugin offers.
+#
+# The pod's user namespace keeps the container's root and capabilities away
+# from the node; unconfined seccomp and AppArmor, and an unmasked /proc, let
+# Podman create its own nested user namespace and mounts inside it.
+#
+#   kubectl create secret generic registry-auth --from-file=auth.json=$HOME/.config/containers/auth.json
+#   kubectl apply -f podman-build-job-user-namespaces.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: podman-build
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+      hostUsers: false
+      containers:
+        - name: build
+          image: ghcr.io/libre-devops/podman:5
+          command: ["bash", "-c"]
+          args:
+            - |
+              set -eu
+              git clone --depth 1 "$REPOSITORY" /work/src
+              podman build -t "$IMAGE" /work/src
+              podman push "$IMAGE"
+          env:
+            - name: REPOSITORY
+              value: https://github.com/example/app.git
+            - name: IMAGE
+              value: registry.example.com/example/app:latest
+            - name: REGISTRY_AUTH_FILE
+              value: /run/secrets/registry/auth.json
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            procMount: Unmasked
+            seccompProfile:
+              type: Unconfined
+            appArmorProfile:
+              type: Unconfined
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              squat.ai/fuse: "1"
+          volumeMounts:
+            - name: containers
+              mountPath: /home/app/.local/share/containers
+            - name: registry-auth
+              mountPath: /run/secrets/registry
+              readOnly: true
+      volumes:
+        - name: containers
+          emptyDir: {}
+        - name: registry-auth
+          secret:
+            secretName: registry-auth

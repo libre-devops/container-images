@@ -76,6 +76,8 @@ candidates() {
 	apt-get:openssl) echo libssl3t64 libssl3 ;;
 	apt-get:shadow) echo passwd ;;
 	apt-get:ssh) echo openssh-client ;;
+	apt-get:libcap) echo libcap2-bin ;;
+	apt-get:docker-shim | dnf:docker-shim | microdnf:docker-shim | apk:docker-shim) echo podman-docker ;;
 	apt-get:krb5) echo libgssapi-krb5-2 ;;
 	apt-get:libc-dev) echo libc6-dev ;;
 	apt-get:linux-headers) echo linux-libc-dev ;;
@@ -88,6 +90,7 @@ candidates() {
 	dnf:openssl | microdnf:openssl) echo openssl-libs ;;
 	dnf:shadow | microdnf:shadow) echo shadow-utils ;;
 	dnf:ssh | microdnf:ssh) echo openssh-clients ;;
+	dnf:uidmap | microdnf:uidmap) echo shadow-utils ;;
 	dnf:krb5 | microdnf:krb5) echo krb5-libs ;;
 	dnf:libc-dev | microdnf:libc-dev) echo glibc-devel ;;
 	dnf:linux-headers | microdnf:linux-headers) echo kernel-headers ;;
@@ -98,6 +101,8 @@ candidates() {
 	apk:icu) echo icu-libs icu ;;
 	apk:openssl) echo libssl3 openssl ;;
 	apk:ssh) echo openssh-client ;;
+	apk:uidmap) echo shadow-subids shadow-uidmap shadow ;;
+	apk:libcap) echo libcap-setcap libcap-utils libcap ;;
 	apk:krb5) echo krb5-libs ;;
 	apk:libc-dev) echo musl-dev glibc-dev ;;
 	*) echo "$1" ;;

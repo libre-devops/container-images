@@ -21,8 +21,11 @@
 #   base        The base image, upgraded, with the shared packages, the app
 #               user, the tools every image has, and a trust store that every
 #               tool uses (add-ca-certificates adds an organisation's CA).
+#   podman      Podman, set up to run rootless inside a container.
 #   python, ansible, ansible-azure, azure-cli, terraform, powershell
-#               The images, each on base.
+#               The images, each on the stage named by BASE_STAGE: base, or
+#               podman for the -podman flavours. Each starts as root, since
+#               podman ends as the app user.
 #   toolbox     Everything, assembled from the stages above.
 #   azure-terraform, azure-pipelines-agent, github-runner
 #               On the stage named by ATOP: terraform for azure-terraform, and
@@ -30,6 +33,7 @@
 
 ARG BASE_IMAGE
 ARG ATOP=base
+ARG BASE_STAGE=base
 
 FROM ${BASE_IMAGE} AS fetch
 # A build stage only: nothing from it runs as root in an image.
@@ -96,7 +100,22 @@ ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
     NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt \
     UV_NATIVE_TLS=true
 
-FROM base AS python
+FROM base AS podman
+RUN --mount=type=bind,source=images,target=/src \
+    sh /src/podman/setup.sh \
+    && sh /src/common/finalise.sh
+# Builds isolate RUN steps with chroot: a nested container cannot create the
+# namespaces Buildah's default isolation needs.
+ENV HOME=/home/app \
+    BUILDAH_ISOLATION=chroot \
+    container=oci
+USER 10001:10001
+WORKDIR /work
+CMD ["bash"]
+
+FROM ${BASE_STAGE} AS python
+# hadolint ignore=DL3002
+USER 0
 ARG PYTHON_MINOR
 COPY --from=fetch /fetched/uv/ /
 RUN --mount=type=bind,source=images,target=/src \
@@ -108,7 +127,9 @@ USER 10001:10001
 WORKDIR /work
 CMD ["bash"]
 
-FROM base AS ansible
+FROM ${BASE_STAGE} AS ansible
+# hadolint ignore=DL3002
+USER 0
 ARG PYTHON_MINOR
 ARG ANSIBLE_LOCK
 COPY --from=fetch /fetched/uv/ /
@@ -125,7 +146,9 @@ USER 10001:10001
 WORKDIR /work
 CMD ["bash"]
 
-FROM base AS ansible-azure
+FROM ${BASE_STAGE} AS ansible-azure
+# hadolint ignore=DL3002
+USER 0
 ARG PYTHON_MINOR
 ARG ANSIBLE_LOCK
 COPY --from=fetch /fetched/uv/ /
@@ -142,7 +165,9 @@ USER 10001:10001
 WORKDIR /work
 CMD ["bash"]
 
-FROM base AS azure-cli
+FROM ${BASE_STAGE} AS azure-cli
+# hadolint ignore=DL3002
+USER 0
 ARG PYTHON_MINOR
 ARG AZURE_CLI_LOCK
 ARG LDO_CLI_LOCK
@@ -160,7 +185,9 @@ USER 10001:10001
 WORKDIR /work
 CMD ["bash"]
 
-FROM base AS terraform
+FROM ${BASE_STAGE} AS terraform
+# hadolint ignore=DL3002
+USER 0
 ARG TERRAFORM_VERSION
 COPY --from=go /built/tenv/ /built/tflint/ /built/terraform-docs/ /built/conftest/ /
 ENV TENV_ROOT=/home/app/.tenv \
@@ -176,7 +203,9 @@ USER 10001:10001
 WORKDIR /work
 CMD ["bash"]
 
-FROM base AS powershell
+FROM ${BASE_STAGE} AS powershell
+# hadolint ignore=DL3002
+USER 0
 ARG AZ_POWERSHELL_VERSION
 ARG MICROSOFT_GRAPH_VERSION
 ARG PESTER_VERSION
@@ -195,7 +224,9 @@ USER 10001:10001
 WORKDIR /work
 CMD ["bash"]
 
-FROM base AS toolbox
+FROM ${BASE_STAGE} AS toolbox
+# hadolint ignore=DL3002
+USER 0
 ARG PYTHON_MINOR
 COPY --from=fetch /fetched/uv/ /
 COPY --from=azure-cli /opt/ /opt/

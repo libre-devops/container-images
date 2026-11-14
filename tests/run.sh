@@ -32,9 +32,25 @@ run() {
 
 echo "== $ref: shared checks"
 run "$ref" bash -s <"$here/common.sh"
+# Podman in a container needs /dev/fuse (fuse-overlayfs), and, from Docker, no
+# seccomp or AppArmor filtering of the user namespaces and mounts it makes, and
+# an unmasked /proc, without which the kernel refuses the nested containers
+# their own; label=disable is for SELinux hosts. The README documents the same
+# flags.
+podman_flags=(--device /dev/fuse --security-opt label=disable
+	--security-opt seccomp=unconfined --security-opt apparmor=unconfined)
+if [ "$(basename "$engine")" = docker ]; then
+	podman_flags+=(--security-opt systempaths=unconfined)
+else
+	podman_flags+=(--security-opt unmask=ALL)
+fi
 for suite in "${suites[@]}"; do
 	echo "== $ref: $suite checks"
-	run "$ref" bash -s <"$here/$suite.sh"
+	if [ "$suite" = podman ]; then
+		run "${podman_flags[@]}" "$ref" bash -s <"$here/$suite.sh"
+	else
+		run "$ref" bash -s <"$here/$suite.sh"
+	fi
 done
 echo "== $ref: arbitrary uid in group 0"
 run --user 4242:0 "$ref" bash -s <"$here/arbitrary-uid.sh"

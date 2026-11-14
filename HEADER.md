@@ -36,6 +36,7 @@ Docker Hub from the same digest.
 - [Tags, versions and support](#tags-versions-and-support)
 - [Usage](#usage)
 - [Self-hosted CI agents](#self-hosted-ci-agents)
+- [Podman in a container](#podman-in-a-container)
 - [Configuration reference](#configuration-reference)
 - [Adding an organisation's CA bundle](#adding-an-organisations-ca-bundle)
 - [Pinning by digest or date tag](#pinning-by-digest-or-date-tag)
@@ -49,7 +50,7 @@ Docker Hub from the same digest.
 
 ## Overview
 
-Ten images, each a thin layer of pinned tools on a hardened base:
+Eleven images, each a thin layer of pinned tools on a hardened base:
 
 - **`python`**: CPython and uv, with one tag for every supported CPython from 3.12 upwards.
 - **`ansible`**: ansible-core and ansible-lint in their own virtual environment, with
@@ -72,10 +73,14 @@ Ten images, each a thin layer of pinned tools on a hardened base:
   [LibreDevOpsHelpers](https://github.com/libre-devops/powershell-helpers).
 - **`toolbox`**: Python, the Azure CLI, Terraform and PowerShell in one image, assembled from
   the same build stages.
+- **`podman`**: Podman set up to run rootless inside a container (Podman in Podman, or in
+  Docker or Kubernetes), with a `docker` command that runs it. `azure-cli`, `terraform` and
+  `toolbox` also come as `-podman` flavours built on it, for CI jobs that build and push images
+  (see [Podman in a container](#podman-in-a-container)).
 - **`azure-pipelines-agent`** and **`github-runner`**: self-hosted CI agents that register
   themselves from environment variables and run one job per container. Each also comes as a
-  `toolbox` flavour with every toolbox tool in it (see
-  [Self-hosted CI agents](#self-hosted-ci-agents)).
+  `toolbox` flavour with every toolbox tool in it, and a `toolbox-podman` flavour that adds
+  Podman, so jobs can build images (see [Self-hosted CI agents](#self-hosted-ci-agents)).
 
 What every image guarantees:
 
@@ -119,6 +124,7 @@ cosign verify ghcr.io/libre-devops/terraform:1 \
 | Terraform for Azure in an air-gapped or restricted network | `azure-terraform` | azurerm, azapi and msgraph install from a local mirror, with no registry |
 | Ansible playbooks against Azure | `ansible-azure` | The Azure collection and its many Python libraries, already installed and patched |
 | Ansible for hosts whose only Python is 3.6, such as RHEL 8 | `ansible:2.16` | ansible-core 2.17 and later cannot manage them; see [Ansible](#ansible) |
+| Building and pushing images in a CI job, without Docker or a privileged container | `podman`, or a `-podman` flavour such as `azure-cli:podman` or `toolbox:podman` | Rootless Podman inside the container; see [Podman in a container](#podman-in-a-container) |
 | Self-hosted Azure Pipelines agents or GitHub Actions runners | `azure-pipelines-agent`, `github-runner` | Ephemeral by default; the `toolbox` tags carry every toolbox tool |
 | Several tool families in one job, or an interactive shell | `toolbox` | Everything together; the largest image (the Az PowerShell modules and the Azure CLI dominate its size) |
 | A specific CPython | `python:<major.minor>` | One tag per supported CPython |
@@ -152,7 +158,8 @@ Every release records its digests in this README and in
 | `azure-terraform` | The current `terraform`, with the newest three minor releases of azurerm, azapi and msgraph |
 | `powershell` | The current PowerShell LTS |
 | `toolbox` | The latest `azure-cli`, `terraform` and `powershell`, with the Azure CLI's Python |
-| `azure-pipelines-agent`, `github-runner` | The current agent release, on its own and atop `toolbox` |
+| `podman` | Podman 5 from the distribution, and `-podman` flavours of the latest `azure-cli`, `terraform` and `toolbox` |
+| `azure-pipelines-agent`, `github-runner` | The current agent release, on its own, atop `toolbox`, and atop `toolbox` with Podman |
 
 **Support.** A version is supported while it is listed in `versions.yml`: its moving tags are
 rebuilt weekly and whenever a fix is available. When a version leaves `versions.yml` (for
@@ -361,10 +368,164 @@ Things to know:
   and those come without npm, npx and corepack, which the agents never use and whose
   dependencies carry known vulnerabilities. A job that needs npm installs Node itself
   (`actions/setup-node`, or the `NodeTool` task).
-- **No Docker inside.** Jobs that build images or use container actions and service containers
-  need a container engine, which these images do not include; give them a Docker-capable
-  host or a sidecar.
+- **Building images in jobs.** The `toolbox-podman` tags add rootless Podman and a `docker`
+  command that runs it, so jobs can build, run and push images; start the agent with the flags
+  in [Podman in a container](#podman-in-a-container). Container jobs and service containers,
+  which the agents run through a Docker daemon, are not supported.
 - **glibc only for the runner.** GitHub publishes no musl build, so there is no Alpine flavour.
+
+## Podman in a container
+
+Build, run and push images inside a CI job or a pod, with no Docker daemon, no Docker socket
+and, on hosts that allow user namespaces, no `--privileged`. Podman runs **rootless**, as the
+image's `app` user (uid 10001), inside the container.
+
+| Image | Use it for |
+| --- | --- |
+| `podman:5` | Podman on its own, with a `docker` command that runs it |
+| `azure-cli:podman`, `terraform:podman`, `toolbox:podman` | The image's tools, plus Podman |
+| `azure-pipelines-agent:toolbox-podman`, `github-runner:toolbox-podman` | Self-hosted agents whose jobs build images |
+
+Every one of them is tested on every pull request the same way: inside the container, as uid
+10001, Podman pulls and runs an image, builds a new one, and runs that.
+
+### What the outer container needs
+
+| Where it runs | Start it with |
+| --- | --- |
+| Podman | `--device /dev/fuse`, and on SELinux hosts (RHEL, Fedora) `--security-opt label=disable` |
+| Docker | `--device /dev/fuse --security-opt seccomp=unconfined --security-opt apparmor=unconfined --security-opt systempaths=unconfined`, and `--security-opt label=disable` on SELinux hosts |
+| Kubernetes | `/dev/fuse` and user namespaces: `privileged: true`, or a pod in its own user namespace with a device plugin for `/dev/fuse` (see [Kubernetes](#kubernetes)) |
+
+Also:
+
+- **Run as uid 10001.** Rootless Podman needs the user's subordinate ids, which `app` has. An
+  arbitrary uid, such as OpenShift's, has none.
+- **Ubuntu 23.10 and later hosts** keep unprivileged user namespaces from processes without an
+  AppArmor profile, which includes Podman in a container. Allow them on the host:
+  `sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0` (or persist it in
+  `/etc/sysctl.d/`).
+- **Image storage.** Podman keeps images in `/home/app/.local/share/containers`. Mount a volume
+  there to keep them between runs, or to keep them off the container's own filesystem.
+
+### Examples
+
+On a workstation or a build host:
+
+```sh
+# Podman on the host
+podman run --rm --device /dev/fuse --security-opt label=disable \
+  -v "$PWD:/work" ghcr.io/libre-devops/podman:5 \
+  podman build -t registry.example.com/team/app:1 .
+
+# Docker on the host
+docker run --rm --device /dev/fuse --security-opt label=disable \
+  --security-opt seccomp=unconfined --security-opt apparmor=unconfined \
+  --security-opt systempaths=unconfined \
+  -v "$PWD:/work" ghcr.io/libre-devops/toolbox:podman \
+  podman build -t registry.example.com/team/app:1 .
+```
+
+GitHub Actions, on a GitHub-hosted runner (Ubuntu, so allow user namespaces first). The job
+needs `permissions: packages: write` to push to GHCR:
+
+```yaml
+steps:
+  - uses: actions/checkout@v7
+  - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+  - env:
+      TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      IMAGE: ghcr.io/example/app:${{ github.sha }}
+    run: >-
+      docker run --rm --device /dev/fuse --security-opt label=disable
+      --security-opt seccomp=unconfined --security-opt apparmor=unconfined
+      --security-opt systempaths=unconfined
+      -v "$PWD:/work" -e TOKEN -e IMAGE ghcr.io/libre-devops/podman:5
+      bash -c 'echo "$TOKEN" | podman login ghcr.io -u token --password-stdin &&
+               podman build -t "$IMAGE" . && podman push "$IMAGE"'
+```
+
+A self-hosted Azure Pipelines agent whose jobs can build images (see
+[Self-hosted CI agents](#self-hosted-ci-agents) for its settings):
+
+```sh
+docker run -d --restart always --device /dev/fuse --security-opt label=disable \
+  --security-opt seccomp=unconfined --security-opt apparmor=unconfined \
+  --security-opt systempaths=unconfined \
+  -e AZP_URL=https://dev.azure.com/contoso -e AZP_POOL=containers \
+  -e AZP_TOKEN_FILE=/run/secrets/azp-token -v "$PWD/azp-token:/run/secrets/azp-token:ro" \
+  ghcr.io/libre-devops/azure-pipelines-agent:toolbox-podman
+```
+
+Jobs then run `podman build`, or `docker build`, as plain script steps.
+
+### Kubernetes
+
+Three manifests in [`examples/kubernetes/`](./examples/kubernetes), each checked against the
+Kubernetes 1.33 and 1.34 API schemas:
+
+| File | What it is |
+| --- | --- |
+| [`podman-build-job.yaml`](./examples/kubernetes/podman-build-job.yaml) | A Job that clones a repository, builds and pushes, privileged: works on most clusters |
+| [`podman-build-job-user-namespaces.yaml`](./examples/kubernetes/podman-build-job-user-namespaces.yaml) | The same Job without `privileged`, in the pod's own user namespace (`hostUsers: false`, Kubernetes 1.33 and later) with `/dev/fuse` from a device plugin |
+| [`azure-pipelines-agent-podman.yaml`](./examples/kubernetes/azure-pipelines-agent-podman.yaml) | A Deployment of ephemeral Azure Pipelines agents whose jobs can build images |
+
+The core of the first:
+
+```yaml
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+      containers:
+        - name: build
+          image: ghcr.io/libre-devops/podman:5
+          command: ["bash", "-c", "git clone --depth 1 \"$REPOSITORY\" /work/src && podman build -t \"$IMAGE\" /work/src && podman push \"$IMAGE\""]
+          env:
+            - name: REGISTRY_AUTH_FILE
+              value: /run/secrets/registry/auth.json
+          securityContext:
+            privileged: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+          volumeMounts:
+            - name: containers
+              mountPath: /home/app/.local/share/containers
+```
+
+`privileged` is what most clusters need: it gives the container `/dev/fuse` and lets Podman
+create its user namespace. Podman still runs as uid 10001 inside it. Where the cluster runs pods
+in their own user namespace, the second manifest removes `privileged`: the pod's root then maps
+to an unprivileged user on the node. Pod Security Admission's `restricted` and `baseline`
+levels reject both, so run them in a namespace labelled `privileged`.
+
+### What works, and what does not
+
+- **Works:** `podman build`, `run`, `push`, `pull`, `login` and `save`; multi-stage builds;
+  `docker build` and the other `docker` commands, through the `docker` command that runs Podman.
+- **Network:** nested containers share the outer container's network, so builds reach whatever
+  the job can reach.
+- **Does not work:** tools that talk to a Docker daemon over its socket (Testcontainers,
+  docker-compose against `/var/run/docker.sock`), and the CI agents' container jobs and service
+  containers, which need a real Docker daemon.
+
+### How it works
+
+- `app` has subordinate uids and gids 1 to 65535 apart from its own, which fits inside the 65536
+  ids a rootless outer container usually maps.
+- `newuidmap` and `newgidmap` carry file capabilities instead of the setuid bit. A setuid
+  `newuidmap` cannot write a nested container's id map; this is what Red Hat's
+  `quay.io/podman/stable` does too.
+- Storage goes through fuse-overlayfs, since the kernel's overlay cannot mount over the outer
+  container's own overlay. Newer Buildah overlays the build context as well.
+- Nested containers share the outer container's namespaces and need no cgroups
+  (`/etc/containers/containers.conf`), and builds isolate `RUN` steps with chroot
+  (`BUILDAH_ISOLATION=chroot`): a container cannot create most namespaces of its own.
 
 ## Configuration reference
 
@@ -395,6 +556,7 @@ Set by the images; override any of them with `-e` or your CI system's environmen
 | `NODE_EXTRA_CA_CERTS` | `/etc/ssl/certs/ca-certificates.crt` | all | Node.js, which the CI agents run tasks with, trusts the system store too |
 | `UV_NATIVE_TLS` | `true` | all | uv uses the system trust store rather than its own |
 | `LANG` | `C.UTF-8` | `ansible`, `ansible-azure` | ansible-core refuses to run without a UTF-8 locale |
+| `BUILDAH_ISOLATION` | `chroot` | `podman`, `-podman` flavours | `podman build` isolates `RUN` steps with chroot, which works inside a container |
 | `TF_CLI_CONFIG_FILE` | `/usr/local/share/terraform/airgapped.tfrc` | `azure-terraform` | Mirrored providers install from the mirror; `registry.tfrc` uses the registry for everything |
 | `PYTHONUNBUFFERED` | `1` | `python`, `azure-cli`, `toolbox` | Unbuffered output in CI logs |
 | `AZURE_CORE_COLLECT_TELEMETRY` | `no` | `azure-cli`, `toolbox` | No Azure CLI telemetry |
@@ -612,6 +774,9 @@ request, so either edit stays safe. If a hardened variant you need does not exis
 | `Import-Module Microsoft.Graph` is slow | It loads about forty modules | Import only what you use, for example `Import-Module Microsoft.Graph.Users` |
 | `azure-terraform`: `Failed to query available provider packages` or `no available releases match` for azurerm, azapi or msgraph | The constraints exclude every mirrored version | Loosen the constraint, or use the registry: `TF_CLI_CONFIG_FILE=/usr/local/share/terraform/registry.tfrc` |
 | Ansible fails on a RHEL 8 host with a Python version error | ansible-core 2.17 and later need Python 3.7 or newer on the host | Use `ansible:2.16` for those hosts |
+| `crun: mount proc to proc: Operation not permitted` from Podman in a container | Docker masks parts of `/proc`, and the kernel then refuses nested containers their own | Add `--security-opt systempaths=unconfined` (Docker) or `--security-opt unmask=ALL` (Podman) |
+| `newuidmap: write to uid_map failed` or `cannot set up namespace` from Podman in a container | User namespaces are blocked: Docker's seccomp or AppArmor profile, or Ubuntu's `apparmor_restrict_unprivileged_userns` | Start the container with the flags in [Podman in a container](#podman-in-a-container), and on Ubuntu hosts set the sysctl there |
+| `fuse: device not found` from Podman in a container | No `/dev/fuse` | Add `--device /dev/fuse` |
 | A self-hosted runner gets no jobs | GitHub stops sending jobs to a runner 30 days after a newer release | Pull the moving tag again; new runner versions are released automatically |
 
 ## Developing
@@ -675,6 +840,7 @@ images/common/          Distribution-neutral build steps shared by every image
 images/<image>/         An image's own install steps
 images/locks/           Generated: hash-locked Python requirements
 vex/                    VEX statements for findings shown not to apply
+examples/kubernetes/    Kubernetes manifests for Podman in a container
 tests/                  Smoke tests, run in every image as the app user
 scripts/                Matrix, tags, pins, VEX and docs (images.py), and CI helpers
 .github/workflows/      Build, Release, Pins and Scan

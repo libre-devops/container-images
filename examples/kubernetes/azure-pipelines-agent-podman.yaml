@@ -1,0 +1,63 @@
+# Self-hosted Azure Pipelines agents that can build images, as a Deployment.
+# Each agent registers when its container starts, runs one job, removes its
+# registration and exits; Kubernetes then starts a fresh container, so every
+# job begins from a clean image. Podman runs rootless as uid 10001; privileged
+# gives it /dev/fuse and its user namespace (or use the hostUsers: false
+# settings in podman-build-job-user-namespaces.yaml).
+#
+#   kubectl create secret generic azp-token --from-literal=token=<personal access token>
+#   kubectl apply -f azure-pipelines-agent-podman.yaml
+#
+# The token needs only the Agent Pools (Read & manage) scope: jobs run as the
+# agent's user and could read it. For GitHub Actions, the same shape works
+# with ghcr.io/libre-devops/github-runner:toolbox-podman and the RUNNER_*
+# settings in the README; actions-runner-controller is the other route.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: azure-pipelines-agent
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: azure-pipelines-agent
+  template:
+    metadata:
+      labels:
+        app: azure-pipelines-agent
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+      containers:
+        - name: agent
+          image: ghcr.io/libre-devops/azure-pipelines-agent:toolbox-podman
+          env:
+            - name: AZP_URL
+              value: https://dev.azure.com/example
+            - name: AZP_POOL
+              value: kubernetes
+            - name: AZP_TOKEN_FILE
+              value: /run/secrets/azp/token
+          securityContext:
+            privileged: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+          resources:
+            requests:
+              cpu: "1"
+              memory: 4Gi
+          volumeMounts:
+            - name: azp-token
+              mountPath: /run/secrets/azp
+              readOnly: true
+            - name: containers
+              mountPath: /home/app/.local/share/containers
+      volumes:
+        - name: azp-token
+          secret:
+            secretName: azp-token
+        - name: containers
+          emptyDir: {}
