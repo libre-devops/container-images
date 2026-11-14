@@ -36,8 +36,13 @@ shellcheck /tmp/check.sh
 shfmt -d /tmp/check.sh
 ok "ShellCheck and shfmt run"
 
-curl -fsS -o /dev/null https://github.com
-git ls-remote https://github.com/libre-devops/container-images HEAD >/dev/null
+# Retried: github.com answers 502 now and then, which is not the image's fault.
+curl -fsS --retry 4 --retry-all-errors --retry-delay 5 -o /dev/null https://github.com
+for attempt in 1 2 3 4; do
+	git ls-remote https://github.com/libre-devops/container-images HEAD >/dev/null && break
+	[ "$attempt" -lt 4 ] || fail "git cannot reach github.com"
+	sleep 5
+done
 ok "TLS works against the image's CA bundle (curl and git)"
 
 command -v update-ca-certificates >/dev/null || command -v update-ca-trust >/dev/null ||
