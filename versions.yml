@@ -51,11 +51,11 @@ platforms:
 # rewrites it.
 bases:
   alpine: dhi.io/alpine-base:3.24-alpine3.24-dev@sha256:266554e75cb00f88effe4048ba78b6f628d6a5ca67ac9e9727ae37a4a1299ce5
-  debian: dhi.io/debian-base:trixie-debian13-dev@sha256:94571f3dc07fbc7166f6f1cbf1fe068a7647198ee2554e6b90d59a68cc8b053c
+  debian: dhi.io/debian-base:trixie-debian13-dev@sha256:9e9caa90d9ef807a54a5cef570d83263715cfcb6f3e7342bc0625c80e3b258b8
   python-3.12: dhi.io/python:3.12-debian13-dev@sha256:c7090b12d1050252ee964efa9190124c3053a8679bfd7fa33aff9d5123fb673c
-  python-3.13: dhi.io/python:3.13-debian13-dev@sha256:cc070c5f483069c53e251a63d114f1f17af806f257a67c9106967247d3ee092a
-  python-3.14: dhi.io/python:3.14-debian13-dev@sha256:d43af3feac6200c6d6ebd2000d8833779bd69260bb91d9035aaaa0b0635f705f
-  python-3.15: dhi.io/python:3.15-debian13-dev@sha256:57d020a69247e1e3c63e640d1df57633b8ea444498dccda306349c0debbabdc8
+  python-3.13: dhi.io/python:3.13-debian13-dev@sha256:dbe603d026e33548f420346eb3963d3dd385a06148c1913bb5af32218829d4e2
+  python-3.14: dhi.io/python:3.14-debian13-dev@sha256:60dbebd00c5332a2d5984a96f33b76d6e42167095a9db8c49cd0038ac388de77
+  python-3.15: dhi.io/python:3.15-debian13-dev@sha256:98add6f52fc7dca59a55fc0618b6d40266922b0b8482f017c082a3dbe4ab89ab
 
 # Other bases that every pull request builds and smoke tests the latest
 # version of each image on, so that changing distribution stays a one-line
@@ -64,7 +64,7 @@ portability:
   alpine: dhi.io/alpine-base:3.24-alpine3.24-dev@sha256:266554e75cb00f88effe4048ba78b6f628d6a5ca67ac9e9727ae37a4a1299ce5
   rhel: registry.access.redhat.com/ubi10/ubi:10.1@sha256:15f0a6e2b448ac7aa24425c9ab541e6402dc32b782844a285ccaeffb1c938fe1
   rhel-minimal: registry.access.redhat.com/ubi10/ubi-minimal:10.2@sha256:f0c7b9ae9914fcf183e7c36fc46864903c2d2caf3af327421913ae54b3d29e94
-  wolfi: cgr.dev/chainguard/wolfi-base:latest@sha256:ae9575b121f5776e2f04e192064bc2c5665af9d1c425d620dc773aca31698712
+  wolfi: cgr.dev/chainguard/wolfi-base:latest@sha256:1f6b749929164c3d9e7cad0289254f39b2ba51e1dddaeb0fa57532ea03f2db31
 
 # Tools, by exact version. The Go tools (shfmt, tenv, TFLint, terraform-docs,
 # Conftest) are built from source with this Go, never downloaded as binaries,
