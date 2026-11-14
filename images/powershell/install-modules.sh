@@ -19,10 +19,21 @@ $modules = [ordered]@{
     "Microsoft.Graph"  = $env:MICROSOFT_GRAPH_VERSION
     LibreDevOpsHelpers = $env:LIBREDEVOPSHELPERS_VERSION
 }
+# The PowerShell Gallery answers 503 now and then: retry with backoff.
 foreach ($name in $modules.Keys) {
     $version = $modules[$name]
     Write-Host "Installing $name $version"
-    Install-PSResource -Name $name -Version "[$version]" -Repository PSGallery `
-        -TrustRepository -Scope AllUsers -AcceptLicense -Quiet
+    for ($attempt = 1; ; $attempt++) {
+        try {
+            Install-PSResource -Name $name -Version "[$version]" -Repository PSGallery `
+                -TrustRepository -Scope AllUsers -AcceptLicense -Quiet
+            break
+        } catch {
+            if ($attempt -ge 4) { throw }
+            $delay = 20 * $attempt
+            Write-Warning "Installing $name failed (attempt $attempt): $($_.Exception.Message); retrying in ${delay}s"
+            Start-Sleep -Seconds $delay
+        }
+    }
 }
 '
