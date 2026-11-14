@@ -7,6 +7,8 @@
         "overrides": {
           "github.com/go-jose/go-jose/v4": "v4.1.6",
           "github.com/klauspost/compress": "v1.20.2",
+          "go.opentelemetry.io/otel/sdk": "v1.47.0",
+          "go.opentelemetry.io/otel/trace": "v1.47.0",
           "golang.org/x/crypto": "v0.59.0",
           "golang.org/x/net": "v0.62.0"
         }
@@ -50,8 +52,108 @@
         "module": "github.com/terraform-linters/tflint",
         "overrides": {
           "github.com/go-jose/go-jose/v4": "v4.1.6",
+          "go.opentelemetry.io/otel/sdk": "v1.47.0",
+          "go.opentelemetry.io/otel/trace": "v1.47.0",
           "golang.org/x/crypto": "v0.59.0",
           "golang.org/x/net": "v0.62.0"
+        }
+      }
+    }
+  },
+  "providers": {
+    "azure/azapi": {
+      "2.11.0": {
+        "amd64": {
+          "sha256": "8cf0b1b1e064ea0bc4c785e68f2b239a57ffece529b21a60b415b9d310a610a9",
+          "url": "https://github.com/Azure/terraform-provider-azapi/releases/download/v2.11.0/terraform-provider-azapi_2.11.0_linux_amd64.zip"
+        },
+        "arm64": {
+          "sha256": "05ae9abf23abf003229e9e04734fce2b881974b0df4313083a890d9f67b1fc35",
+          "url": "https://github.com/Azure/terraform-provider-azapi/releases/download/v2.11.0/terraform-provider-azapi_2.11.0_linux_arm64.zip"
+        }
+      },
+      "2.12.0": {
+        "amd64": {
+          "sha256": "71402acfa1ad35788a5d1669bdd59040434a45aea990d062dcc41f17163c8e1b",
+          "url": "https://github.com/Azure/terraform-provider-azapi/releases/download/v2.12.0/terraform-provider-azapi_2.12.0_linux_amd64.zip"
+        },
+        "arm64": {
+          "sha256": "f193175c87376a70d387cf69ab458684b9ea76b0954b00480446cdf278c3076d",
+          "url": "https://github.com/Azure/terraform-provider-azapi/releases/download/v2.12.0/terraform-provider-azapi_2.12.0_linux_arm64.zip"
+        }
+      },
+      "2.13.0": {
+        "amd64": {
+          "sha256": "bbe4a39522cff59977e1bf623e7d95267d819ef3cf9ba0f597eb066ce1b11b70",
+          "url": "https://github.com/Azure/terraform-provider-azapi/releases/download/v2.13.0/terraform-provider-azapi_2.13.0_linux_amd64.zip"
+        },
+        "arm64": {
+          "sha256": "e2948388d78d392b7992cc0e76d4f266545ffc8984ba458d7fa6884a5f04f376",
+          "url": "https://github.com/Azure/terraform-provider-azapi/releases/download/v2.13.0/terraform-provider-azapi_2.13.0_linux_arm64.zip"
+        }
+      }
+    },
+    "hashicorp/azurerm": {
+      "5.11.0": {
+        "amd64": {
+          "sha256": "2345a6104bb485141afb8f0047a48a5f27c3bb4e6eeb360c7955f381227d88dd",
+          "url": "https://releases.hashicorp.com/terraform-provider-azurerm/5.11.0/terraform-provider-azurerm_5.11.0_linux_amd64.zip"
+        },
+        "arm64": {
+          "sha256": "6a5b9d6dd86a759f8bfd81e15e7e688531c85ee9660bd5923f99e993a1f15c62",
+          "url": "https://releases.hashicorp.com/terraform-provider-azurerm/5.11.0/terraform-provider-azurerm_5.11.0_linux_arm64.zip"
+        }
+      },
+      "5.12.0": {
+        "amd64": {
+          "sha256": "2c21bbfb81da265c36c7f7fe7863ea97069662ac55a94dd5d585bf70b52747b0",
+          "url": "https://releases.hashicorp.com/terraform-provider-azurerm/5.12.0/terraform-provider-azurerm_5.12.0_linux_amd64.zip"
+        },
+        "arm64": {
+          "sha256": "ba6612f728b94f64dffb5a9020ac290b29de6dc96382295c423e0d43793b0086",
+          "url": "https://releases.hashicorp.com/terraform-provider-azurerm/5.12.0/terraform-provider-azurerm_5.12.0_linux_arm64.zip"
+        }
+      },
+      "5.13.0": {
+        "amd64": {
+          "sha256": "4063473301ef49cb91d206ab9aec2d78462b54f6dc27fe5cf33230db40562085",
+          "url": "https://releases.hashicorp.com/terraform-provider-azurerm/5.13.0/terraform-provider-azurerm_5.13.0_linux_amd64.zip"
+        },
+        "arm64": {
+          "sha256": "d0b6cb5ced81062fc2cb9cc4a2d3269fa1c215cbe8a071ec87acc91ea5e28cc1",
+          "url": "https://releases.hashicorp.com/terraform-provider-azurerm/5.13.0/terraform-provider-azurerm_5.13.0_linux_arm64.zip"
+        }
+      }
+    },
+    "microsoft/msgraph": {
+      "0.4.0": {
+        "amd64": {
+          "sha256": "3095e7cdb41e961376526de573d1b99b06fff90e64aa9f5a8d2381222b8bc9c7",
+          "url": "https://github.com/microsoft/terraform-provider-msgraph/releases/download/v0.4.0/terraform-provider-msgraph_0.4.0_linux_amd64.zip"
+        },
+        "arm64": {
+          "sha256": "8dad206152fab78cc672e37a4e94290c98b5219beff314d2fc9a4974a6f0209d",
+          "url": "https://github.com/microsoft/terraform-provider-msgraph/releases/download/v0.4.0/terraform-provider-msgraph_0.4.0_linux_arm64.zip"
+        }
+      },
+      "0.5.0": {
+        "amd64": {
+          "sha256": "d779983577609c8ce7960426dd9fe2664ed14542ea50b63bd0c65a5f29e45f18",
+          "url": "https://github.com/microsoft/terraform-provider-msgraph/releases/download/v0.5.0/terraform-provider-msgraph_0.5.0_linux_amd64.zip"
+        },
+        "arm64": {
+          "sha256": "f1e67b3cc425a6d4dbdd386eee08d37eed5fded861b8f563b34dfeb63e193677",
+          "url": "https://github.com/microsoft/terraform-provider-msgraph/releases/download/v0.5.0/terraform-provider-msgraph_0.5.0_linux_arm64.zip"
+        }
+      },
+      "0.6.0": {
+        "amd64": {
+          "sha256": "370116fb9b500ad7c8b56e3a013ce48f5c52ed0bedde11a4d907b334e57282e8",
+          "url": "https://github.com/microsoft/terraform-provider-msgraph/releases/download/v0.6.0/terraform-provider-msgraph_0.6.0_linux_amd64.zip"
+        },
+        "arm64": {
+          "sha256": "b40c0c74b8f0fca32780249b8e8d864d7bd8e2073e4e592665a726d750b8cf4e",
+          "url": "https://github.com/microsoft/terraform-provider-msgraph/releases/download/v0.6.0/terraform-provider-msgraph_0.6.0_linux_arm64.zip"
         }
       }
     }
