@@ -33,7 +33,7 @@ zizmor --persona=regular --min-severity=low .github/workflows || status=1
 
 echo "== Trivy: secrets and misconfigurations in the repository"
 trivy fs --quiet --scanners secret,misconfig --severity MEDIUM,HIGH,CRITICAL \
-	--skip-dirs .tools --exit-code 1 . || status=1
+	--ignorefile .trivyignore.yaml --skip-dirs .tools --exit-code 1 . || status=1
 
 echo "== no en or em dashes"
 en=$(printf '\342\200\223')

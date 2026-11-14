@@ -48,3 +48,26 @@ vulnerabilities:
     paths: ["opt/actions-runner/bin/*.deps.json"]
     statement: GitHub Actions runner 2.338.2 bundles Microsoft.AspNetCore.WebUtilities 8.0.25; fixed in 8.0.34, awaiting a runner release. Accepted risk, time-boxed.
     expired_at: 2026-12-13
+
+# Kubernetes examples for Podman in a container (examples/kubernetes): not
+# part of any image, and these settings are what running Podman in a pod
+# needs, explained in each file and the README. Not time-boxed.
+misconfigurations:
+  - id: KSV-0017
+    paths: ["examples/kubernetes/*.yaml"]
+    statement: Privileged gives Podman /dev/fuse and its user namespace; the user-namespaces example avoids it.
+  - id: KSV-0001
+    paths: ["examples/kubernetes/*.yaml"]
+    statement: newuidmap and newgidmap gain their capabilities on exec, which privilege escalation must allow.
+  - id: KSV-0104
+    paths: ["examples/kubernetes/*.yaml"]
+    statement: The default seccomp profile blocks the user namespaces and mounts Podman makes.
+  - id: KSV-0027
+    paths: ["examples/kubernetes/*.yaml"]
+    statement: Podman mounts /proc for its nested containers, which a masked /proc prevents.
+  - id: KSV-0014
+    paths: ["examples/kubernetes/*.yaml"]
+    statement: Podman and the CI agents write to the container's filesystem.
+  - id: KSV-0125
+    paths: ["examples/kubernetes/*.yaml"]
+    statement: Examples use the public ghcr.io images; a cluster's own registry allow-list decides this.

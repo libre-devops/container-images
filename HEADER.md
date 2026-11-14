@@ -36,6 +36,7 @@ Docker Hub from the same digest.
 - [Tags, versions and support](#tags-versions-and-support)
 - [Usage](#usage)
 - [Self-hosted CI agents](#self-hosted-ci-agents)
+- [Podman in a container](#podman-in-a-container)
 - [Configuration reference](#configuration-reference)
 - [Adding an organisation's CA bundle](#adding-an-organisations-ca-bundle)
 - [Pinning by digest or date tag](#pinning-by-digest-or-date-tag)
@@ -227,37 +228,6 @@ steps:
       ghcr.io/libre-devops/powershell:lts pwsh -File ./build.ps1
 ```
 
-### Podman in a container
-
-The `podman` image and the `-podman` flavours run Podman rootless, as the `app` user, inside
-the container: no Docker socket, and no `--privileged`. The container needs `/dev/fuse` (for
-fuse-overlayfs), and from Docker no seccomp or AppArmor filtering of the user namespaces and
-mounts Podman makes:
-
-```sh
-# Podman on the host
-podman run --rm --device /dev/fuse --security-opt label=disable \
-  ghcr.io/libre-devops/podman:5 podman build -t example .
-
-# Docker on the host
-docker run --rm --device /dev/fuse --security-opt seccomp=unconfined \
-  --security-opt apparmor=unconfined --security-opt label=disable \
-  ghcr.io/libre-devops/toolbox:podman podman build -t example .
-```
-
-- **Ubuntu 23.10 and later hosts** keep unprivileged user namespaces from processes without an
-  AppArmor profile, Podman in a container included: allow them with
-  `sysctl kernel.apparmor_restrict_unprivileged_userns=0`.
-- **Kubernetes** needs `/dev/fuse` in the pod (a device plugin, or a `hostPath` volume) and a
-  pod that may create user namespaces; on most clusters the simplest is a pod with
-  `privileged: true` running as uid 10001.
-- **Run as uid 10001.** Rootless Podman needs the user's subordinate ids, which `app` has; an
-  arbitrary uid has none.
-- **Builds** isolate `RUN` steps with chroot (`BUILDAH_ISOLATION=chroot`), and nested containers
-  share the outer container's network, so they reach what it reaches.
-- **`docker`** is a command that runs Podman, so scripts that call `docker build` and
-  `docker push` work. Tools that talk to a Docker daemon over its socket do not.
-
 ### azure-terraform
 
 `terraform init` installs azurerm, azapi and msgraph from the image's own mirror, at
@@ -403,6 +373,156 @@ Things to know:
   in [Podman in a container](#podman-in-a-container). Container jobs and service containers,
   which the agents run through a Docker daemon, are not supported.
 - **glibc only for the runner.** GitHub publishes no musl build, so there is no Alpine flavour.
+
+## Podman in a container
+
+Build, run and push images inside a CI job or a pod, with no Docker daemon, no Docker socket
+and, on hosts that allow user namespaces, no `--privileged`. Podman runs **rootless**, as the
+image's `app` user (uid 10001), inside the container.
+
+| Image | Use it for |
+| --- | --- |
+| `podman:5` | Podman on its own, with a `docker` command that runs it |
+| `azure-cli:podman`, `terraform:podman`, `toolbox:podman` | The image's tools, plus Podman |
+| `azure-pipelines-agent:toolbox-podman`, `github-runner:toolbox-podman` | Self-hosted agents whose jobs build images |
+
+Every one of them is tested on every pull request the same way: inside the container, as uid
+10001, Podman pulls and runs an image, builds a new one, and runs that.
+
+### What the outer container needs
+
+| Where it runs | Start it with |
+| --- | --- |
+| Podman | `--device /dev/fuse`, and on SELinux hosts (RHEL, Fedora) `--security-opt label=disable` |
+| Docker | `--device /dev/fuse --security-opt seccomp=unconfined --security-opt apparmor=unconfined`, and `--security-opt label=disable` on SELinux hosts |
+| Kubernetes | `/dev/fuse` and user namespaces: `privileged: true`, or a pod in its own user namespace with a device plugin for `/dev/fuse` (see [Kubernetes](#kubernetes)) |
+
+Also:
+
+- **Run as uid 10001.** Rootless Podman needs the user's subordinate ids, which `app` has. An
+  arbitrary uid, such as OpenShift's, has none.
+- **Ubuntu 23.10 and later hosts** keep unprivileged user namespaces from processes without an
+  AppArmor profile, which includes Podman in a container. Allow them on the host:
+  `sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0` (or persist it in
+  `/etc/sysctl.d/`).
+- **Image storage.** Podman keeps images in `/home/app/.local/share/containers`. Mount a volume
+  there to keep them between runs, or to keep them off the container's own filesystem.
+
+### Examples
+
+On a workstation or a build host:
+
+```sh
+# Podman on the host
+podman run --rm --device /dev/fuse --security-opt label=disable \
+  -v "$PWD:/work" ghcr.io/libre-devops/podman:5 \
+  podman build -t registry.example.com/team/app:1 .
+
+# Docker on the host
+docker run --rm --device /dev/fuse --security-opt label=disable \
+  --security-opt seccomp=unconfined --security-opt apparmor=unconfined \
+  -v "$PWD:/work" ghcr.io/libre-devops/toolbox:podman \
+  podman build -t registry.example.com/team/app:1 .
+```
+
+GitHub Actions, on a GitHub-hosted runner (Ubuntu, so allow user namespaces first). The job
+needs `permissions: packages: write` to push to GHCR:
+
+```yaml
+steps:
+  - uses: actions/checkout@v7
+  - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+  - env:
+      TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      IMAGE: ghcr.io/example/app:${{ github.sha }}
+    run: >-
+      docker run --rm --device /dev/fuse --security-opt label=disable
+      --security-opt seccomp=unconfined --security-opt apparmor=unconfined
+      -v "$PWD:/work" -e TOKEN -e IMAGE ghcr.io/libre-devops/podman:5
+      bash -c 'echo "$TOKEN" | podman login ghcr.io -u token --password-stdin &&
+               podman build -t "$IMAGE" . && podman push "$IMAGE"'
+```
+
+A self-hosted Azure Pipelines agent whose jobs can build images (see
+[Self-hosted CI agents](#self-hosted-ci-agents) for its settings):
+
+```sh
+docker run -d --restart always --device /dev/fuse --security-opt label=disable \
+  --security-opt seccomp=unconfined --security-opt apparmor=unconfined \
+  -e AZP_URL=https://dev.azure.com/contoso -e AZP_POOL=containers \
+  -e AZP_TOKEN_FILE=/run/secrets/azp-token -v "$PWD/azp-token:/run/secrets/azp-token:ro" \
+  ghcr.io/libre-devops/azure-pipelines-agent:toolbox-podman
+```
+
+Jobs then run `podman build`, or `docker build`, as plain script steps.
+
+### Kubernetes
+
+Three manifests in [`examples/kubernetes/`](./examples/kubernetes), each checked against the
+Kubernetes 1.33 and 1.34 API schemas:
+
+| File | What it is |
+| --- | --- |
+| [`podman-build-job.yaml`](./examples/kubernetes/podman-build-job.yaml) | A Job that clones a repository, builds and pushes, privileged: works on most clusters |
+| [`podman-build-job-user-namespaces.yaml`](./examples/kubernetes/podman-build-job-user-namespaces.yaml) | The same Job without `privileged`, in the pod's own user namespace (`hostUsers: false`, Kubernetes 1.33 and later) with `/dev/fuse` from a device plugin |
+| [`azure-pipelines-agent-podman.yaml`](./examples/kubernetes/azure-pipelines-agent-podman.yaml) | A Deployment of ephemeral Azure Pipelines agents whose jobs can build images |
+
+The core of the first:
+
+```yaml
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+      containers:
+        - name: build
+          image: ghcr.io/libre-devops/podman:5
+          command: ["bash", "-c", "git clone --depth 1 \"$REPOSITORY\" /work/src && podman build -t \"$IMAGE\" /work/src && podman push \"$IMAGE\""]
+          env:
+            - name: REGISTRY_AUTH_FILE
+              value: /run/secrets/registry/auth.json
+          securityContext:
+            privileged: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+          volumeMounts:
+            - name: containers
+              mountPath: /home/app/.local/share/containers
+```
+
+`privileged` is what most clusters need: it gives the container `/dev/fuse` and lets Podman
+create its user namespace. Podman still runs as uid 10001 inside it. Where the cluster runs pods
+in their own user namespace, the second manifest removes `privileged`: the pod's root then maps
+to an unprivileged user on the node. Pod Security Admission's `restricted` and `baseline`
+levels reject both, so run them in a namespace labelled `privileged`.
+
+### What works, and what does not
+
+- **Works:** `podman build`, `run`, `push`, `pull`, `login` and `save`; multi-stage builds;
+  `docker build` and the other `docker` commands, through the `docker` command that runs Podman.
+- **Network:** nested containers share the outer container's network, so builds reach whatever
+  the job can reach.
+- **Does not work:** tools that talk to a Docker daemon over its socket (Testcontainers,
+  docker-compose against `/var/run/docker.sock`), and the CI agents' container jobs and service
+  containers, which need a real Docker daemon.
+
+### How it works
+
+- `app` has subordinate uids and gids 1 to 65535 apart from its own, which fits inside the 65536
+  ids a rootless outer container usually maps.
+- `newuidmap` and `newgidmap` carry file capabilities instead of the setuid bit. A setuid
+  `newuidmap` cannot write a nested container's id map; this is what Red Hat's
+  `quay.io/podman/stable` does too.
+- Storage goes through fuse-overlayfs, since the kernel's overlay cannot mount over the outer
+  container's own overlay. Newer Buildah overlays the build context as well.
+- Nested containers share the outer container's namespaces and need no cgroups
+  (`/etc/containers/containers.conf`), and builds isolate `RUN` steps with chroot
+  (`BUILDAH_ISOLATION=chroot`): a container cannot create most namespaces of its own.
 
 ## Configuration reference
 
@@ -716,6 +836,7 @@ images/common/          Distribution-neutral build steps shared by every image
 images/<image>/         An image's own install steps
 images/locks/           Generated: hash-locked Python requirements
 vex/                    VEX statements for findings shown not to apply
+examples/kubernetes/    Kubernetes manifests for Podman in a container
 tests/                  Smoke tests, run in every image as the app user
 scripts/                Matrix, tags, pins, VEX and docs (images.py), and CI helpers
 .github/workflows/      Build, Release, Pins and Scan

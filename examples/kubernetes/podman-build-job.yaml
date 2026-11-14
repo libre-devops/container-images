@@ -1,0 +1,62 @@
+# Build and push an image with rootless Podman in a Kubernetes Job: the
+# simplest form, which works on most clusters. Podman runs as uid 10001 (the
+# image's app user, which has the subordinate ids rootless Podman needs);
+# privileged gives the container /dev/fuse and lets Podman create its user
+# namespace. For clusters with user namespaces, see
+# podman-build-job-user-namespaces.yaml, which needs no privileged.
+#
+#   kubectl create secret generic registry-auth --from-file=auth.json=$HOME/.config/containers/auth.json
+#   kubectl apply -f podman-build-job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: podman-build
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+      containers:
+        - name: build
+          image: ghcr.io/libre-devops/podman:5
+          command: ["bash", "-c"]
+          args:
+            - |
+              set -eu
+              git clone --depth 1 "$REPOSITORY" /work/src
+              podman build -t "$IMAGE" /work/src
+              podman push "$IMAGE"
+          env:
+            - name: REPOSITORY
+              value: https://github.com/example/app.git
+            - name: IMAGE
+              value: registry.example.com/example/app:latest
+            # Podman reads registry credentials from here.
+            - name: REGISTRY_AUTH_FILE
+              value: /run/secrets/registry/auth.json
+          securityContext:
+            privileged: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+          volumeMounts:
+            # Podman's image store, off the container's own filesystem.
+            - name: containers
+              mountPath: /home/app/.local/share/containers
+            - name: registry-auth
+              mountPath: /run/secrets/registry
+              readOnly: true
+      volumes:
+        - name: containers
+          emptyDir: {}
+        - name: registry-auth
+          secret:
+            secretName: registry-auth
