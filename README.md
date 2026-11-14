@@ -194,7 +194,7 @@ that uid in group 0; the images' home, work and tool directories are writable by
 ```yaml
 jobs:
   plan:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     container:
       image: ghcr.io/libre-devops/terraform:1
       options: --user 1001:0

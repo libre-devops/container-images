@@ -25,7 +25,7 @@ concurrency:
 jobs:
   check:
     name: Check
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     outputs:
@@ -148,7 +148,7 @@ jobs:
     name: Build result
     needs: [check, build, portability]
     if: ${{ always() }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions: {}
     steps:
       - name: Fail if any job failed
@@ -170,7 +170,7 @@ jobs:
     name: Merge the bot pull request
     needs: result
     if: github.event_name == 'workflow_dispatch' && (github.ref_name == 'pins/refresh' || github.ref_name == 'release/readme-tables')
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
       pull-requests: write
