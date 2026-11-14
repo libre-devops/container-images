@@ -239,9 +239,14 @@ jobs:
       pull-requests: write
       actions: write
     steps:
-      - name: Check out
+      # The latest main, not the commit this run started from: main may have
+      # moved since, and a README branch built on it from an older checkout
+      # would look like it changes the workflows, which GITHUB_TOKEN may not.
+      # The records below still describe exactly what this run published.
+      - name: Check out the latest main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: main
           persist-credentials: false
       - name: Install pinned tools
         run: scripts/ci-tools.sh uv
