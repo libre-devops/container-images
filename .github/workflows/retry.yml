@@ -1,0 +1,41 @@
+name: Retry
+
+# Re-runs the failed jobs of a Build, Release, Pins or Scan run once, so that
+# a failure from a flaky network or registry (a refused login, a 502, a
+# timeout) heals without anyone re-running it. A second failure stands: that
+# one is most likely real, and is left for a person. Only runs from branches
+# in this repository are retried, never a fork's.
+#
+# Re-running a Release's failed builds re-runs its publish jobs too, since
+# they depend on the whole build matrix: a version already published gets a
+# second date tag (.2) for the same digest, and nothing is overwritten.
+
+# workflow_run is risky when a privileged job checks out or uses what a fork
+# controls. This job checks out nothing, uses only the run's id and this
+# repository's workflow name, skips runs from forks, and can only re-run them.
+on:
+  workflow_run: # zizmor: ignore[dangerous-triggers]
+    workflows: [Build, Release, Pins, Scan]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  retry:
+    name: Re-run failed jobs once
+    if: >-
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.run_attempt == 1 &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-26.04
+    permissions:
+      actions: write
+    steps:
+      - name: Re-run the failed jobs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_NAME: ${{ github.event.workflow_run.name }}
+        run: |
+          echo "Re-running the failed jobs of $RUN_NAME run $RUN_ID, once."
+          gh run rerun "$RUN_ID" --failed --repo "$GITHUB_REPOSITORY"
