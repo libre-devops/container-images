@@ -72,7 +72,7 @@ portability:
 # `just lock`, their dependencies' known ones.
 tools:
   # renovate: datasource=golang-version depName=go
-  go: 1.27.3
+  go: 1.27.4
   # renovate: datasource=github-releases depName=koalaman/shellcheck extractVersion=^v(?<version>.+)$
   shellcheck: 0.11.0
   # renovate: datasource=github-releases depName=mvdan/sh extractVersion=^v(?<version>.+)$
@@ -84,7 +84,7 @@ tools:
   # renovate: datasource=github-releases depName=tofuutils/tenv extractVersion=^v(?<version>.+)$
   tenv: 4.15.1
   # renovate: datasource=github-releases depName=terraform-linters/tflint extractVersion=^v(?<version>.+)$
-  tflint: 0.65.0
+  tflint: 0.66.0
   # renovate: datasource=github-releases depName=terraform-docs/terraform-docs extractVersion=^v(?<version>.+)$
   terraform-docs: 0.24.0
   # renovate: datasource=github-releases depName=open-policy-agent/conftest extractVersion=^v(?<version>.+)$
@@ -209,11 +209,11 @@ images:
     tools: [tenv, tflint, terraform-docs, conftest]
     versions:
       # renovate: datasource=github-releases depName=hashicorp/terraform extractVersion=^v(?<version>.+)$
-      - { version: "1.17.1", base: debian, latest: true, moving: [minor, major] }
+      - { version: "1.17.2", base: debian, latest: true, moving: [minor, major] }
       # renovate: datasource=github-releases depName=hashicorp/terraform extractVersion=^v(?<version>.+)$
-      - { version: "1.17.1", base: alpine, flavour: alpine, latest: true, moving: [minor, major] }
+      - { version: "1.17.2", base: alpine, flavour: alpine, latest: true, moving: [minor, major] }
       # renovate: datasource=github-releases depName=hashicorp/terraform extractVersion=^v(?<version>.+)$
-      - { version: "1.17.1", base: debian, flavour: podman, base_stage: podman, latest: true, moving: [minor, major] }
+      - { version: "1.17.2", base: debian, flavour: podman, base_stage: podman, latest: true, moving: [minor, major] }
 
   ansible:
     description: ansible-core and ansible-lint in their own virtual environment, with OpenSSH and uv
@@ -247,7 +247,7 @@ images:
     provider_mirror: true
     versions:
       # renovate: datasource=github-releases depName=hashicorp/terraform extractVersion=^v(?<version>.+)$
-      - { version: "1.17.1", base: debian, atop: terraform, latest: true, moving: [minor, major] }
+      - { version: "1.17.2", base: debian, atop: terraform, latest: true, moving: [minor, major] }
 
   powershell:
     description: PowerShell LTS with PSScriptAnalyzer, Pester, Az, Microsoft.Graph and LibreDevOpsHelpers
@@ -258,7 +258,7 @@ images:
     download: powershell
     versions:
       # renovate: datasource=github-releases depName=PowerShell/PowerShell extractVersion=^v(?<version>.+)$
-      - { version: "7.6.9", base: debian, latest: true, moving: [minor, major], aliases: [lts] }
+      - { version: "7.6.10", base: debian, latest: true, moving: [minor, major], aliases: [lts] }
 
   toolbox:
     description: Every tool above in one image, for ease
@@ -282,11 +282,11 @@ images:
     os_packages: [icu, openssl, zlib, libstdc++, krb5, tar, gzip]
     versions:
       # renovate: datasource=github-releases depName=microsoft/azure-pipelines-agent extractVersion=^v(?<version>.+)$
-      - { version: "5.281.1", base: debian, latest: true, moving: [major] }
+      - { version: "5.282.0", base: debian, latest: true, moving: [major] }
       # renovate: datasource=github-releases depName=microsoft/azure-pipelines-agent extractVersion=^v(?<version>.+)$
-      - { version: "5.281.1", base: python-3.12, flavour: toolbox, atop: toolbox, latest: true, moving: [major], contents: "Azure Pipelines agent {version} with everything in toolbox {toolbox}: Azure CLI {azure_cli}, Terraform {terraform}, PowerShell {powershell} with Az and Microsoft.Graph, Python {python}" }
+      - { version: "5.282.0", base: python-3.12, flavour: toolbox, atop: toolbox, latest: true, moving: [major], contents: "Azure Pipelines agent {version} with everything in toolbox {toolbox}: Azure CLI {azure_cli}, Terraform {terraform}, PowerShell {powershell} with Az and Microsoft.Graph, Python {python}" }
       # renovate: datasource=github-releases depName=microsoft/azure-pipelines-agent extractVersion=^v(?<version>.+)$
-      - { version: "5.281.1", base: python-3.12, flavour: toolbox-podman, atop: toolbox, base_stage: podman, latest: true, moving: [major], contents: "Azure Pipelines agent {version} with everything in toolbox {toolbox} and Podman {podman}, which jobs can use to build and run images (rootless; see the README for the outer container's flags)" }
+      - { version: "5.282.0", base: python-3.12, flavour: toolbox-podman, atop: toolbox, base_stage: podman, latest: true, moving: [major], contents: "Azure Pipelines agent {version} with everything in toolbox {toolbox} and Podman {podman}, which jobs can use to build and run images (rootless; see the README for the outer container's flags)" }
 
   github-runner:
     description: A self-hosted GitHub Actions runner that registers itself from environment variables
