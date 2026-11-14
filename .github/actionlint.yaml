@@ -1,0 +1,8 @@
+# actionlint 1.7.12, the newest release, predates GitHub's Ubuntu 26.04
+# runners and does not know their labels, so declare them here. Remove this
+# file once an actionlint release knows them (Renovate brings it in, and lint
+# then passes without it).
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04
+    - ubuntu-26.04-arm
