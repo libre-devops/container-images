@@ -1,105 +1,112 @@
 {
   "ansible": {
     "2.16.20": {
-      "date_tag": "2.16.20-py3.12-20261113",
-      "digest": "sha256:8b1ab3d731a5711bb2baa44e073c79d0b230ed888e42eecc63246a9152ebe5c0",
-      "released": "2026-11-13"
+      "date_tag": "2.16.20-py3.12-20261114",
+      "digest": "sha256:91b35d38aefe16c41d1c701283e76a56bb8e712a6b5bcc19b2e27423aeb1bb8e",
+      "released": "2026-11-14"
     },
     "2.22.0": {
-      "date_tag": "2.22.0-py3.14-20261113",
-      "digest": "sha256:a12759f98618819ff55b04d1e2a4153323af1e6e9586a20fcb449ed6cd575723",
-      "released": "2026-11-13"
+      "date_tag": "2.22.0-py3.14-20261114",
+      "digest": "sha256:3c4311977de141a9ba461f479545c8d5d83fa22feb96ea3e034367de59bfd1e4",
+      "released": "2026-11-14"
     }
   },
   "ansible-azure": {
     "4.2.0": {
-      "date_tag": "4.2.0-20261113",
-      "digest": "sha256:1eab0ea063a46715a0c37dd03c19f898ccbb3f0a80bab9df6b1f4c09ab707b01",
-      "released": "2026-11-13"
+      "date_tag": "4.2.0-20261114",
+      "digest": "sha256:a114458b1dcbc1aab7f88496e0534171f8e4d42c24d14d104b3f7626e0e92ee9",
+      "released": "2026-11-14"
     }
   },
   "azure-cli": {
     "2.72.0": {
-      "date_tag": "2.72.0-py3.12-20261113.2",
-      "digest": "sha256:76eb8845bfd60e9d6296fdbf89c1044ab3e66324110f13274012a98aba02c950",
-      "released": "2026-11-13"
+      "date_tag": "2.72.0-py3.12-20261114",
+      "digest": "sha256:a3e7274987ee3c68e31b1d2d05160edd8203b7f522b02c51e046e0f612bb8b07",
+      "released": "2026-11-14"
     },
     "2.92.0": {
-      "date_tag": "2.92.0-py3.12-20261113.2",
-      "digest": "sha256:e012fc0f891d8494f69255a36716c0858070db49832e9f7951360b01dacd8f49",
-      "released": "2026-11-13"
+      "date_tag": "2.92.0-py3.12-20261114",
+      "digest": "sha256:325db039c35b8872cee078030f5f84752d9c69efd2424b97180ae70cab6d8ea9",
+      "released": "2026-11-14"
     }
   },
   "azure-pipelines-agent": {
     "5.281.1": {
-      "date_tag": "5.281.1-20261113",
-      "digest": "sha256:81559a384abd90669a2ca63104d856cd795b0e2643f63c3296a85cfcb907ac6d",
-      "released": "2026-11-13"
+      "date_tag": "5.281.1-20261114",
+      "digest": "sha256:d1fad2f1674ea6827afdcb5607ad828de06ef6e4b72501cee18212514bee8c12",
+      "released": "2026-11-14"
     },
     "5.281.1-toolbox": {
-      "date_tag": "5.281.1-toolbox-20261113",
-      "digest": "sha256:f78e776ab70ad3fe3f15291254ac1392f155eca1faee3612f16b4ba2b8d7f258",
-      "released": "2026-11-13"
+      "date_tag": "5.281.1-toolbox-20261114",
+      "digest": "sha256:deeab257c3b260d74c7c0fdf6a181078682d2a4f7bf21bf2a45742f83ec28014",
+      "released": "2026-11-14"
+    }
+  },
+  "azure-terraform": {
+    "1.17.1": {
+      "date_tag": "1.17.1-20261114",
+      "digest": "sha256:23ebaa6ee8314024d523c541899a4731c79708b8526ad438e2127308d1bc5963",
+      "released": "2026-11-14"
     }
   },
   "github-runner": {
     "2.338.2": {
-      "date_tag": "2.338.2-20261113",
-      "digest": "sha256:6cb176e6c7763d9578bf1bb2726f65edddb9d047309b4e30528ccf2efa040565",
-      "released": "2026-11-13"
+      "date_tag": "2.338.2-20261114",
+      "digest": "sha256:432214b255517aeda1675fc5ca27a59ec5af52b6fbb875af8ec02c8aced6dba7",
+      "released": "2026-11-14"
     },
     "2.338.2-toolbox": {
-      "date_tag": "2.338.2-toolbox-20261113",
-      "digest": "sha256:7c65e4abb2fcf547c1b02134b540520e1826c1f672364edaaffd6bc42ba5db57",
-      "released": "2026-11-13"
+      "date_tag": "2.338.2-toolbox-20261114",
+      "digest": "sha256:4619922ed56a9426b056f91baafe45bad773cf4db26c6caa608fba6634fcde15",
+      "released": "2026-11-14"
     }
   },
   "powershell": {
     "7.6.9": {
-      "date_tag": "7.6.9-20261113.2",
-      "digest": "sha256:765c6a922f0a50489ef6441339dce04d57b143c536a6caa193ddf47a613f1294",
-      "released": "2026-11-13"
+      "date_tag": "7.6.9-20261114",
+      "digest": "sha256:0491134492eb81e2054751bd34759973f85d11476ae8778280673750e4d8616c",
+      "released": "2026-11-14"
     }
   },
   "python": {
     "3.12": {
-      "date_tag": "3.12-20261113.2",
-      "digest": "sha256:25ebb73550259a01472a4099404ea435a66a1873b4e59b38be901eabb0a764ec",
-      "released": "2026-11-13"
+      "date_tag": "3.12-20261114",
+      "digest": "sha256:e1776e9e2ec6cab5fb2dea129720959bcbe37f032701ef84af2d813e5b071604",
+      "released": "2026-11-14"
     },
     "3.13": {
-      "date_tag": "3.13-20261113.2",
-      "digest": "sha256:fa4794ed1f5d2a39ffc61a22559778fa69027b1f39a04c583a836cea239c49c2",
-      "released": "2026-11-13"
+      "date_tag": "3.13-20261114",
+      "digest": "sha256:d048c9d71d25c9c0b0ecc24923afd6d6ba65e39039def41ec6b36441a476c5ed",
+      "released": "2026-11-14"
     },
     "3.14": {
-      "date_tag": "3.14-20261113.2",
-      "digest": "sha256:6c565fb7cb249841f4427444280f52c1b56c3dc5fe66280627f09f5377c2f7a1",
-      "released": "2026-11-13"
+      "date_tag": "3.14-20261114",
+      "digest": "sha256:55e940478d42974d9696e5499fa8d0d65f47c37b24f8e85d2430c1549a83c550",
+      "released": "2026-11-14"
     },
     "3.15": {
-      "date_tag": "3.15-20261113.2",
-      "digest": "sha256:b5213d656654e92a0d8892007b139639bfc0f9172f78f449beabf56005fd49c0",
-      "released": "2026-11-13"
+      "date_tag": "3.15-20261114",
+      "digest": "sha256:a8ab84ab5f622c8b15956ed6094bc3828e258bf76b99f935e9e55de4355c3437",
+      "released": "2026-11-14"
     }
   },
   "terraform": {
     "1.17.1": {
-      "date_tag": "1.17.1-20261113.2",
-      "digest": "sha256:8fadb75cc65c3fe0d37cd76af68850d2b58dcc5714d720e72133d7210dd97805",
-      "released": "2026-11-13"
+      "date_tag": "1.17.1-20261114",
+      "digest": "sha256:2365241657fb858b29d918858cdc9b66b19661419da4242ca88ffc3a49862967",
+      "released": "2026-11-14"
     },
     "1.17.1-alpine": {
-      "date_tag": "1.17.1-alpine-20261113.2",
-      "digest": "sha256:9c76805079af40f813b8ffac92e77100660bf6551ee649eb55857d3b4fc64d9b",
-      "released": "2026-11-13"
+      "date_tag": "1.17.1-alpine-20261114",
+      "digest": "sha256:94d535d80d11f3cab26dd723d0385abe111115a69dba96a65fa309d8b424d5cf",
+      "released": "2026-11-14"
     }
   },
   "toolbox": {
     "1": {
-      "date_tag": "1-20261113.2",
-      "digest": "sha256:8b8affb24ec32eb6ad6e68d51a80108c3e243f75999ad09f134b75c60e15ae60",
-      "released": "2026-11-13"
+      "date_tag": "1-20261114",
+      "digest": "sha256:2cfe86a54787c677a7b5cb1c5987c3e4ccc268051abe204dc3a914d0df44002e",
+      "released": "2026-11-14"
     }
   }
 }
