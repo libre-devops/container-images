@@ -1,0 +1,105 @@
+name: Portability
+
+# Every two weeks (the 1st and 15th of each month), and on demand: builds the
+# latest version of each image on the portability bases in versions.yml (Red
+# Hat UBI, UBI minimal, Wolfi and Alpine, as each image allows), amd64 only,
+# and runs its smoke tests, so that moving to another distribution stays a
+# one-line change. Nothing is pushed, and a scan finding on these bases is a
+# warning, not a failure.
+
+on:
+  schedule:
+    - cron: "0 4 1,15 * *" # 04:00 UTC on the 1st and 15th
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: portability
+  cancel-in-progress: true
+
+jobs:
+  matrix:
+    name: Matrix
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    outputs:
+      portability: ${{ steps.matrix.outputs.portability }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned tools
+        run: scripts/ci-tools.sh uv
+      - name: Build the matrix
+        id: matrix
+        run: uv run scripts/images.py matrix --github-output >/dev/null
+
+  portability:
+    name: Portability ${{ matrix.id }}
+    needs: matrix
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.matrix.outputs.portability) }}
+    env:
+      IMAGE: ${{ matrix.image }}
+      VERSION: ${{ matrix.version }}
+      BASE_NAME: ${{ matrix.base_name }}
+      REF: localhost/libre-devops/${{ matrix.image }}:${{ matrix.version }}-${{ matrix.base_name }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned tools
+        run: scripts/ci-tools.sh uv trivy
+      # Docker Hardened Images portability bases (Alpine) need the login too.
+      - name: Log in to dhi.io
+        env:
+          REGISTRY_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: scripts/registry-login.sh dhi.io
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ${{ matrix.containerfile }}
+          target: ${{ matrix.target }}
+          platforms: ${{ matrix.platform }}
+          build-args: ${{ matrix.build_args }}
+          tags: ${{ env.REF }}
+          load: true
+          provenance: false
+          sbom: false
+      # Ubuntu 23.10 and later keep unprivileged user namespaces from processes
+      # without an AppArmor profile, which includes Podman inside a container.
+      # Lift that for the Podman in Podman smoke tests (see the README).
+      - name: Allow user namespaces for Podman in a container
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+      - name: Smoke test
+        run: tests/run.sh "$IMAGE" "$REF" "$VERSION"
+      - name: Scan (informational, not a gate for portability bases)
+        run: scripts/scan.sh "$REF" "$IMAGE" "$VERSION" "$BASE_NAME" || echo "::warning::$IMAGE $VERSION does not pass the scan gate on the $BASE_NAME base"
+
+  result:
+    name: Portability result
+    needs: [matrix, portability]
+    if: ${{ always() }}
+    runs-on: ubuntu-26.04
+    permissions: {}
+    steps:
+      - name: Fail if any job failed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Results: $RESULTS"
+          for result in $RESULTS; do
+            [ "$result" = success ] || exit 1
+          done

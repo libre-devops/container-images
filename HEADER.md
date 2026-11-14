@@ -94,7 +94,7 @@ What every image guarantees:
 | Verifiable | cosign keyless signature, SBOM and SLSA provenance on every published digest |
 | Non-root | Runs as `app` (uid 10001) in `/work`; works rootless under Podman, and as an arbitrary uid in group 0 |
 | Multi-platform | linux/amd64 and linux/arm64, each built natively |
-| Portable | The same build runs on RHEL (UBI), Wolfi and Alpine bases, proven on every pull request |
+| Portable | The same build runs on RHEL (UBI), Wolfi and Alpine bases, proven every two weeks |
 | Current | Rebuilt every Monday, on every merge, and whenever a published image can be fixed by a rebuild |
 
 ## Quick start
@@ -141,7 +141,7 @@ Optional parts you can delete without breaking the rest:
 | Podman and the `-podman` flavours | The `podman` entry, the `base_stage: podman` lines, `images/podman/`, `tests/podman.sh` |
 | `azure-terraform` | Its entry and `terraform_providers` in `versions.yml`, `images/terraform/` |
 | The OpenSSH source build | Only the ansible images use it: switch them to `os_packages: [ssh]` (see [Built from source](#built-from-source)) |
-| Portability builds | `portability` in `versions.yml`, and the portability job in the workflows |
+| Portability builds | `portability` in `versions.yml`, and `.github/workflows/portability.yml` |
 | Automatic re-runs | `.github/workflows/retry.yml` |
 
 Locally, `just build`, `just test`, `just scan` and `just lint` run the same steps CI does.
@@ -661,7 +661,9 @@ flowchart LR
   subgraph pr["Every pull request"]
     check["Validate pins, lint, zizmor, actionlint, Trivy repository scan"] --> build["Build every version, amd64 and arm64"]
     build --> test["Smoke tests"] --> gate["Trivy gate"]
-    check --> port["Build on UBI, Wolfi and Alpine bases"]
+  end
+  subgraph fortnight["Every two weeks"]
+    port["Portability: build and smoke test on UBI, Wolfi and Alpine bases"]
   end
   subgraph release["Release: merges, Mondays, on demand"]
     push["Build once per platform, push by digest"] --> verify["Smoke test and scan that digest"]
@@ -789,8 +791,9 @@ just build python 3.13 registry.access.redhat.com/ubi10/ubi:10.1@sha256:<digest>
 To publish on another base, change the entries under `bases` in `versions.yml` and run
 `just pin`. To publish an extra variant on another base, as the `-alpine` tags are, add a
 version line with a `flavour` (see `versions.yml`). The portability bases (UBI 10, UBI 10
-minimal, Wolfi and Docker Hardened Images Alpine) are built and smoke tested on every pull
-request, so either edit stays safe. If a hardened variant you need does not exist,
+minimal, Wolfi and Docker Hardened Images Alpine) are built and smoke tested every two weeks
+by the Portability workflow, and on demand, so either edit stays safe: start it by hand
+before a change of base. If a hardened variant you need does not exist,
 `docker.io/library/debian:13-slim`, pinned by digest, is a drop-in fallback.
 
 ## Troubleshooting
@@ -834,11 +837,12 @@ You need Docker or Podman, [just](https://just.systems) and [uv](https://docs.as
 
 | Workflow | Runs on | Does | Publishes |
 | --- | --- | --- | --- |
-| [Build](./.github/workflows/build.yml) | Every pull request; started by Pins and Release | Check, build every version for both platforms, smoke test, scan; portability builds; merge the pull requests Pins and Release open, once they pass | No |
+| [Build](./.github/workflows/build.yml) | Every pull request; started by Pins and Release | Check, build every version for both platforms, smoke test, scan; merge the pull requests Pins and Release open, once they pass | No |
 | [Release](./.github/workflows/release.yml) | Merges to `main` that change the images, not only docs or workflows (Build starts it after merging the pins refresh), Mondays 03:00 UTC, on demand, and Scan | Build once per platform, test and scan the pushed digest, tag both registries, sign, open a pull request with the new digests | Yes |
 | [Pins](./.github/workflows/pins.yml) | Pull requests that change `versions.yml`; daily 02:00 UTC | Repin and patch on the branch and re-run Build; daily, refresh base digests and patches as a pull request, and re-run Build on it | No |
 | [Scan](./.github/workflows/scan.yml) | Daily 06:00 UTC | Rescan every published image, report to the Security tab, rebuild if needed | No |
-| [Retry](./.github/workflows/retry.yml) | A Build, Release, Pins or Scan run that fails | Re-run its failed jobs once, so a flaky registry or network heals by itself; a second failure stands | No |
+| [Portability](./.github/workflows/portability.yml) | The 1st and 15th of each month, 04:00 UTC; on demand | Build the latest version of each image on the portability bases and smoke test it | No |
+| [Retry](./.github/workflows/retry.yml) | A Build, Release, Pins, Scan or Portability run that fails | Re-run its failed jobs once, so a flaky registry or network heals by itself; a second failure stands | No |
 
 ### Adding a version
 

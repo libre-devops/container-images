@@ -1,8 +1,8 @@
 name: Retry
 
-# Re-runs the failed jobs of a Build, Release, Pins or Scan run once, so that
-# a failure from a flaky network or registry (a refused login, a 502, a
-# timeout) heals without anyone re-running it. A second failure stands: that
+# Re-runs the failed jobs of a Build, Release, Pins, Scan or Portability run
+# once, so that a failure from a flaky network or registry (a refused login, a
+# 502, a timeout) heals without anyone re-running it. A second failure stands: that
 # one is most likely real, and is left for a person. Only runs from branches
 # in this repository are retried, never a fork's.
 #
@@ -15,7 +15,7 @@ name: Retry
 # repository's workflow name, skips runs from forks, and can only re-run them.
 on:
   workflow_run: # zizmor: ignore[dangerous-triggers]
-    workflows: [Build, Release, Pins, Scan]
+    workflows: [Build, Release, Pins, Scan, Portability]
     types: [completed]
 
 permissions: {}
