@@ -31,6 +31,7 @@ Docker Hub from the same digest.
 
 - [Overview](#overview)
 - [Quick start](#quick-start)
+- [Using this as a starting point](#using-this-as-a-starting-point)
 - [Images](#images)
 - [Choosing an image](#choosing-an-image)
 - [Tags, versions and support](#tags-versions-and-support)
@@ -111,6 +112,39 @@ cosign verify ghcr.io/libre-devops/terraform:1 \
   --certificate-identity https://github.com/libre-devops/container-images/.github/workflows/release.yml@refs/heads/main \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
+
+## Using this as a starting point
+
+This repository is meant to be forked and owned: a working pipeline to start from, not a
+finished product. To make it yours:
+
+1. **Registries.** Set `registries` in [`versions.yml`](./versions.yml) to your GHCR
+   organisation and Docker Hub namespace, and `REPOSITORY` in
+   [`scripts/images.py`](./scripts/images.py) to your fork's URL. It goes into the image labels,
+   the cosign signing identity and the Docker Hub overview.
+2. **Secrets and settings.** Add `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` as repository
+   secrets. They push to Docker Hub and pull the Docker Hardened Images bases from `dhi.io`,
+   which needs an entitlement. Allow GitHub Actions to create pull requests (organisation and
+   repository settings), and install Renovate.
+3. **Bases.** Without a Docker Hardened Images entitlement, point `bases` at Red Hat UBI or
+   Wolfi; the portability builds show every image works on them. `just pin` resolves the
+   digests.
+4. **Images.** Delete the images you do not need from `versions.yml`, with their stage in
+   `images/Containerfile` and their `tests/` suite, and add your own the same way (see
+   [Adding a version](#adding-a-version)).
+
+Optional parts you can delete without breaking the rest:
+
+| Part | Remove |
+| --- | --- |
+| The CI agents | Their entries in `versions.yml`, `images/agents/`, their stages and tests |
+| Podman and the `-podman` flavours | The `podman` entry, the `base_stage: podman` lines, `images/podman/`, `tests/podman.sh` |
+| `azure-terraform` | Its entry and `terraform_providers` in `versions.yml`, `images/terraform/` |
+| The OpenSSH source build | Only the ansible images use it: switch them to `os_packages: [ssh]` (see [Built from source](#built-from-source)) |
+| Portability builds | `portability` in `versions.yml`, and the portability job in the workflows |
+| Automatic re-runs | `.github/workflows/retry.yml` |
+
+Locally, `just build`, `just test`, `just scan` and `just lint` run the same steps CI does.
 
 ## Images
 
