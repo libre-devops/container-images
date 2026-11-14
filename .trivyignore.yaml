@@ -16,33 +16,9 @@ vulnerabilities:
   # for 30 days, so the agent images could ship while a release with patched
   # .NET is awaited; Renovate brings that release in. Paths are limited to the
   # agents' own manifests.
-  - id: CVE-2026-58280
-    paths: ["opt/azure-pipelines-agent/bin/*.deps.json"]
-    statement: Azure Pipelines agent 5.281.1 bundles .NET runtime 10.0.12; fixed in 10.0.13, awaiting an agent release. Accepted risk, time-boxed.
-    expired_at: 2026-12-13
-  - id: CVE-2026-69651
-    paths: ["opt/azure-pipelines-agent/bin/*.deps.json"]
-    statement: Azure Pipelines agent 5.281.1 bundles .NET runtime 10.0.12; fixed in 10.0.13, awaiting an agent release. Accepted risk, time-boxed.
-    expired_at: 2026-12-13
   - id: CVE-2026-84008
     paths: ["opt/azure-pipelines-agent/bin/*.deps.json"]
-    statement: Azure Pipelines agent 5.281.1 bundles System.Security.Cryptography.Pkcs 9.0.10; fixed in 9.0.21, awaiting an agent release. Accepted risk, time-boxed.
-    expired_at: 2026-12-13
-  - id: CVE-2026-96225
-    paths: ["opt/azure-pipelines-agent/bin/*.deps.json"]
-    statement: Azure Pipelines agent 5.281.1 bundles .NET runtime 10.0.12; fixed in 10.0.13, awaiting an agent release. Accepted risk, time-boxed.
-    expired_at: 2026-12-13
-  - id: CVE-2026-96231
-    paths: ["opt/azure-pipelines-agent/bin/*.deps.json"]
-    statement: Azure Pipelines agent 5.281.1 bundles .NET runtime 10.0.12; fixed in 10.0.13, awaiting an agent release. Accepted risk, time-boxed.
-    expired_at: 2026-12-13
-  - id: CVE-2026-96233
-    paths: ["opt/azure-pipelines-agent/bin/*.deps.json"]
-    statement: Azure Pipelines agent 5.281.1 bundles .NET runtime 10.0.12; fixed in 10.0.13, awaiting an agent release. Accepted risk, time-boxed.
-    expired_at: 2026-12-13
-  - id: GHSA-p3jp-9v83-76w9
-    paths: ["opt/azure-pipelines-agent/bin/*.deps.json"]
-    statement: Azure Pipelines agent 5.281.1 bundles .NET runtime 10.0.12; fixed in 10.0.14, awaiting an agent release. Accepted risk, time-boxed.
+    statement: Azure Pipelines agent 5.282.0 bundles System.Security.Cryptography.Pkcs 9.0.10; fixed in 9.0.21, awaiting an agent release. Accepted risk, time-boxed.
     expired_at: 2026-12-13
   - id: CVE-2026-114149
     paths: ["opt/actions-runner/bin/*.deps.json"]

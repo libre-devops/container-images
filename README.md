@@ -774,7 +774,7 @@ expiry date, after which the finding fails the gate again. In force:
 
 | Findings | Where | Why accepted | Expires |
 | --- | --- | --- | --- |
-| Seven high CVEs in .NET runtime 10.0.12 and System.Security.Cryptography.Pkcs 9.0.10 | The Azure Pipelines agent's bundled .NET (`azure-pipelines-agent`) | Only Microsoft can update them, in an agent release; these findings apply | 2026-12-13 |
+| CVE-2026-84008 in System.Security.Cryptography.Pkcs 9.0.10 | The Azure Pipelines agent's bundled .NET libraries (`azure-pipelines-agent`) | Only Microsoft can update it, in an agent release; this finding applies | 2026-12-13 |
 | CVE-2026-114149 in Microsoft.AspNetCore.WebUtilities 8.0.25 | The GitHub Actions runner's bundled libraries (`github-runner`) | Only GitHub can update it, in a runner release; this finding applies | 2026-12-13 |
 
 Renovate brings in each agent release as it appears; an exception whose finding is gone has no
