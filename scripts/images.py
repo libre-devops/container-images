@@ -122,7 +122,7 @@ AZURE_PIPELINES_AGENT = {
     "amd64-musl": "linux-musl-x64",
     "arm64-musl": "linux-musl-arm64",
 }
-GALAXY_COLLECTIONS = {"azure-azcollection": "azure.azcollection"}
+GALAXY_COLLECTIONS = {"azure-azcollection": "azure.azcollection", "containers-podman": "containers.podman"}
 # OpenSSH portable publishes signed tarballs, not checksums: a release is
 # pinned only after its signature verifies against the OpenSSH release key
 # (Damien Miller's), named here by fingerprint.
@@ -427,10 +427,14 @@ SYSTEM_CERTS = "pip-system-certs"
 
 
 def ansible_requirement(core: str) -> str:
-    """ansible-core with ansible-lint and the libraries common playbooks need:
-    jmespath (json_query), netaddr (ipaddr filters) and pywinrm (Windows hosts).
-    Unpinned names resolve to the newest release compatible with that core."""
-    return "\n".join([f"ansible-core=={core}", "ansible-lint", "jmespath", "netaddr", "pywinrm", SYSTEM_CERTS])
+    """ansible-core with ansible-lint, Molecule (and molecule-plugins, for
+    scenarios written for its podman driver), and the libraries common
+    playbooks need: jmespath (json_query), netaddr (ipaddr filters) and pywinrm
+    (Windows hosts). Unpinned names resolve to the newest release compatible
+    with that core."""
+    return "\n".join(
+        [f"ansible-core=={core}", "ansible-lint", "molecule", "molecule-plugins", "jmespath", "netaddr", "pywinrm", SYSTEM_CERTS]
+    )
 
 
 def python_lock_spec(

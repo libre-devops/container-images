@@ -161,19 +161,19 @@
       "file": "images/locks/ansible-2.16.20-py3.12.txt",
       "overrides": {},
       "python": "3.12",
-      "requirement": "ansible-core==2.16.20\nansible-lint\njmespath\nnetaddr\npywinrm\npip-system-certs"
+      "requirement": "ansible-core==2.16.20\nansible-lint\nmolecule\nmolecule-plugins\njmespath\nnetaddr\npywinrm\npip-system-certs"
     },
     "ansible-2.22.0-py3.14": {
       "file": "images/locks/ansible-2.22.0-py3.14.txt",
       "overrides": {},
       "python": "3.14",
-      "requirement": "ansible-core==2.22.0\nansible-lint\njmespath\nnetaddr\npywinrm\npip-system-certs"
+      "requirement": "ansible-core==2.22.0\nansible-lint\nmolecule\nmolecule-plugins\njmespath\nnetaddr\npywinrm\npip-system-certs"
     },
     "ansible-azure-4.2.0-py3.14": {
       "file": "images/locks/ansible-azure-4.2.0-py3.14.txt",
       "overrides": {},
       "python": "3.14",
-      "requirement": "ansible-core==2.22.0\nansible-lint\njmespath\nnetaddr\npywinrm\npip-system-certs\n# and the requirements.txt of azure.azcollection==4.2.0"
+      "requirement": "ansible-core==2.22.0\nansible-lint\nmolecule\nmolecule-plugins\njmespath\nnetaddr\npywinrm\npip-system-certs\n# and the requirements.txt of azure.azcollection==4.2.0"
     },
     "azure-cli-2.72.0-py3.12": {
       "file": "images/locks/azure-cli-2.72.0-py3.12.txt",
@@ -236,6 +236,14 @@
         "arm64-musl": {
           "sha256": "302f3ed83a189f6e0d6fe41a1d98d09a51c942cebb18d15ac7f7d7952055668c",
           "url": "https://download.agent.dev.azure.com/agent/5.282.0/vsts-agent-linux-musl-arm64-5.282.0.tar.gz"
+        }
+      }
+    },
+    "containers-podman": {
+      "1.21.2": {
+        "any": {
+          "sha256": "86fefb89cc86b213e7d3906068b525311ea91881369a3866616b5c109cd8d431",
+          "url": "https://galaxy.ansible.com/api/v3/plugin/ansible/content/published/collections/artifacts/containers-podman-1.21.2.tar.gz"
         }
       }
     },
