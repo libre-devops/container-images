@@ -1,0 +1,39 @@
+# The toolbox as a workstation shell: every tool in one container, working in
+# the directory you run it from. Run it as your own uid, so that what it
+# writes there stays yours, and with your Azure CLI login:
+#
+#   mkdir -p ~/.azure    # or Docker creates it, owned by root
+#   HOST_UID=$(id -u) docker compose -f path/to/toolbox.yaml run --rm toolbox
+#
+# With Podman, to build and run images from the shell. It runs as the image's
+# uid 10001, which rootless Podman needs, and keeps its images in a volume:
+#
+#   docker compose -f path/to/toolbox.yaml run --rm toolbox-podman
+
+services:
+  toolbox:
+    image: ghcr.io/libre-devops/toolbox:latest
+    user: "${HOST_UID:-10001}:0"
+    stdin_open: true
+    tty: true
+    volumes:
+      - ${PWD}:/work
+      - ${HOME}/.azure:/home/app/.azure
+
+  toolbox-podman:
+    image: ghcr.io/libre-devops/toolbox:podman
+    profiles: [podman]
+    stdin_open: true
+    tty: true
+    devices: ["/dev/fuse"]
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
+      - systempaths=unconfined
+      - label=disable
+    volumes:
+      - ${PWD}:/work
+      - containers:/home/app/.local/share/containers
+
+volumes:
+  containers:

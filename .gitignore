@@ -5,3 +5,5 @@ release/
 digests/
 # Python bytecode.
 __pycache__/
+# Compose settings with tokens, copied from examples/compose/.env.example.
+examples/compose/.env

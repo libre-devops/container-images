@@ -263,6 +263,18 @@
         }
       }
     },
+    "gitlab-runner": {
+      "19.5.3": {
+        "amd64": {
+          "sha256": "cd586a217b0ba4d339b3f3d645b84f8f5e1cc711e73148c30a3eec0f8c78378b",
+          "url": "https://gitlab-runner-downloads.s3.amazonaws.com/v19.5.3/binaries/gitlab-runner-linux-amd64"
+        },
+        "arm64": {
+          "sha256": "a03646eb5166a6035303d7bd1b3f8f76f55461cc7f1233bf8203539c7d7e8697",
+          "url": "https://gitlab-runner-downloads.s3.amazonaws.com/v19.5.3/binaries/gitlab-runner-linux-arm64"
+        }
+      }
+    },
     "go": {
       "1.27.4": {
         "amd64": {

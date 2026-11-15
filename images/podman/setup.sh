@@ -77,4 +77,8 @@ CONF
 if command -v docker >/dev/null 2>&1; then
 	touch /etc/containers/nodocker
 fi
+
+# Image storage, made here so that a volume mounted on it (to keep images
+# between runs) takes the app user's ownership; finalise.sh hands it over.
+mkdir -p /home/app/.local/share/containers
 echo "podman setup: $(podman --version), rootless for $user"

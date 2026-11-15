@@ -27,7 +27,7 @@
 #               podman for the -podman flavours. Each starts as root, since
 #               podman ends as the app user.
 #   toolbox     Everything, assembled from the stages above.
-#   azure-terraform, azure-pipelines-agent, github-runner
+#   azure-terraform, azure-pipelines-agent, github-runner, gitlab-runner
 #               On the stage named by ATOP: terraform for azure-terraform, and
 #               base, or toolbox for their toolbox flavours, for the CI agents.
 
@@ -47,6 +47,7 @@ ARG POWERSHELL_ASSET=""
 ARG AZURE_AZCOLLECTION_ASSET=""
 ARG AZURE_PIPELINES_AGENT_ASSET=""
 ARG GITHUB_RUNNER_ASSET=""
+ARG GITLAB_RUNNER_ASSET=""
 RUN --mount=type=bind,source=images,target=/src \
     sh /src/common/os-packages.sh ca-certificates curl tar gzip xz \
     && sh /src/common/fetch-all.sh /fetched
@@ -298,3 +299,18 @@ ENV HOME=/home/app
 USER 10001:10001
 WORKDIR /work
 CMD ["start-runner"]
+
+# One static binary. It keeps builds and the cache in /opt/gitlab-runner, so
+# that directory belongs to the app user and, for an arbitrary uid, group 0.
+FROM ${ATOP} AS gitlab-runner
+# hadolint ignore=DL3002
+USER 0
+COPY --from=fetch /fetched/gitlab-runner/ /
+RUN --mount=type=bind,source=images,target=/src \
+    install -d -o 10001 -g 0 -m 0775 /opt/gitlab-runner \
+    && install -m 0755 /src/agents/gitlab-runner.sh /usr/local/bin/start-gitlab-runner \
+    && sh /src/common/finalise.sh
+ENV HOME=/home/app
+USER 10001:10001
+WORKDIR /work
+CMD ["start-gitlab-runner"]

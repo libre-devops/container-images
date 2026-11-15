@@ -78,10 +78,11 @@ Eleven images, each a thin layer of pinned tools on a hardened base:
   Docker or Kubernetes), with a `docker` command that runs it. `azure-cli`, `terraform` and
   `toolbox` also come as `-podman` flavours built on it, for CI jobs that build and push images
   (see [Podman in a container](#podman-in-a-container)).
-- **`azure-pipelines-agent`** and **`github-runner`**: self-hosted CI agents that register
-  themselves from environment variables and run one job per container. Each also comes as a
-  `toolbox` flavour with every toolbox tool in it, and a `toolbox-podman` flavour that adds
-  Podman, so jobs can build images (see [Self-hosted CI agents](#self-hosted-ci-agents)).
+- **`azure-pipelines-agent`**, **`github-runner`** and **`gitlab-runner`**: self-hosted CI
+  agents that set themselves up from environment variables and run one job per container.
+  Each also comes as a `toolbox` flavour with every toolbox tool in it, and a `toolbox-podman`
+  flavour that adds Podman, so jobs can build images (see
+  [Self-hosted CI agents](#self-hosted-ci-agents)).
 
 What every image guarantees:
 
@@ -159,7 +160,7 @@ Locally, `just build`, `just test`, `just scan` and `just lint` run the same ste
 | Ansible playbooks against Azure | `ansible-azure` | The Azure collection and its many Python libraries, already installed and patched |
 | Ansible for hosts whose only Python is 3.6, such as RHEL 8 | `ansible:2.16` | ansible-core 2.17 and later cannot manage them; see [Ansible](#ansible) |
 | Building and pushing images in a CI job, without Docker or a privileged container | `podman`, or a `-podman` flavour such as `azure-cli:podman` or `toolbox:podman` | Rootless Podman inside the container; see [Podman in a container](#podman-in-a-container) |
-| Self-hosted Azure Pipelines agents or GitHub Actions runners | `azure-pipelines-agent`, `github-runner` | Ephemeral by default; the `toolbox` tags carry every toolbox tool |
+| Self-hosted Azure Pipelines agents, GitHub Actions runners or GitLab runners | `azure-pipelines-agent`, `github-runner`, `gitlab-runner` | Ephemeral by default; the `toolbox` tags carry every toolbox tool |
 | Several tool families in one job, or an interactive shell | `toolbox` | Everything together; the largest image (the Az PowerShell modules and the Azure CLI dominate its size) |
 | A specific CPython | `python:<major.minor>` | One tag per supported CPython |
 | The smallest Terraform image | `terraform:alpine` | About a third smaller than the Debian image. musl, so not for Azure Pipelines container jobs, which need glibc |
@@ -193,7 +194,7 @@ Every release records its digests in this README and in
 | `powershell` | The current PowerShell LTS |
 | `toolbox` | The latest `azure-cli`, `terraform` and `powershell`, with the Azure CLI's Python |
 | `podman` | Podman 5 from the distribution, and `-podman` flavours of the latest `azure-cli`, `terraform` and `toolbox` |
-| `azure-pipelines-agent`, `github-runner` | The current agent release, on its own, atop `toolbox`, and atop `toolbox` with Podman |
+| `azure-pipelines-agent`, `github-runner`, `gitlab-runner` | The current agent release, on its own, atop `toolbox`, and atop `toolbox` with Podman |
 
 **Support.** A version is supported while it is listed in `versions.yml`: its moving tags are
 rebuilt weekly and whenever a fix is available. When a version leaves `versions.yml` (for
@@ -204,6 +205,59 @@ nothing published is ever deleted or re-tagged, so pinned references keep workin
 
 The examples use moving tags for brevity. For anything you need to reproduce, pin a date tag
 or a digest (see [Pinning by digest or date tag](#pinning-by-digest-or-date-tag)).
+
+### docker run
+
+Every image runs as `app` (uid 10001) in `/work`, so mount what you work on there. On Linux,
+add `--user "$(id -u):0"` so that the files the container writes stay yours; the images' home
+and tool directories are writable by any uid in group 0. Docker Desktop on macOS and Windows
+handles ownership itself.
+
+```sh
+# Python: the tests of a uv project
+docker run --rm --user "$(id -u):0" -v "$PWD:/work" ghcr.io/libre-devops/python:3.13 uv run pytest
+
+# Ansible (see Ansible below for SSH keys and collections)
+docker run --rm --user "$(id -u):0" -v "$PWD:/work" -v "$HOME/.ssh:/home/app/.ssh:ro" \
+  ghcr.io/libre-devops/ansible:2.22 ansible-playbook -i inventory.ini site.yml
+
+# Azure CLI: log in once, and keep the login in your own ~/.azure
+mkdir -p ~/.azure   # otherwise Docker creates it, owned by root
+docker run --rm -it --user "$(id -u):0" -v "$HOME/.azure:/home/app/.azure" \
+  ghcr.io/libre-devops/azure-cli:latest az login --use-device-code
+
+# Terraform, with a service principal from your environment
+docker run --rm --user "$(id -u):0" -v "$PWD:/work" \
+  -e ARM_TENANT_ID -e ARM_SUBSCRIPTION_ID -e ARM_CLIENT_ID -e ARM_CLIENT_SECRET \
+  ghcr.io/libre-devops/terraform:1 terraform plan
+
+# PowerShell, with Az and Microsoft.Graph
+docker run --rm -it ghcr.io/libre-devops/powershell:lts
+
+# Everything, as an interactive shell, with the Azure CLI login above. Terraform's
+# azurerm and azapi can use that login here, since toolbox has the Azure CLI they call.
+docker run --rm -it --user "$(id -u):0" -v "$PWD:/work" -v "$HOME/.azure:/home/app/.azure" \
+  ghcr.io/libre-devops/toolbox:latest
+```
+
+Podman images need a few more flags (see [Podman in a container](#podman-in-a-container)),
+and the CI agents have their own section ([Self-hosted CI agents](#self-hosted-ci-agents)).
+
+### Docker Compose
+
+Starting points in [`examples/compose/`](./examples/compose):
+
+| File | Runs |
+| --- | --- |
+| [`toolbox.yaml`](./examples/compose/toolbox.yaml) | `toolbox` as a workstation shell in the current directory, with your Azure CLI login; and `toolbox:podman`, keeping its images in a volume |
+| [`agents.yaml`](./examples/compose/agents.yaml) | The three CI agents, one profile each (`azure`, `github`, `gitlab`, and `gitlab-podman` for a GitLab runner whose jobs build images), with their settings from a `.env` file ([`.env.example`](./examples/compose/.env.example)) |
+
+```sh
+HOST_UID=$(id -u) docker compose -f examples/compose/toolbox.yaml run --rm toolbox
+
+cp examples/compose/.env.example examples/compose/.env   # then fill in a token
+docker compose -f examples/compose/agents.yaml --profile gitlab up -d --scale gitlab-runner=3
+```
 
 ### GitHub Actions
 
@@ -343,12 +397,21 @@ securityContext:
 
 ## Self-hosted CI agents
 
-`azure-pipelines-agent` and `github-runner` register themselves when the container starts,
-from environment variables, and are **ephemeral** by default: each runs one job, removes its
-registration and exits, so every job starts from a clean image. Run them under anything that
-restarts containers: a Kubernetes Deployment, a systemd unit, or `docker run --restart`. The
-`toolbox` tags (`azure-pipelines-agent:toolbox`, `github-runner:toolbox`) add everything in
-the `toolbox` image.
+`azure-pipelines-agent`, `github-runner` and `gitlab-runner` set themselves up when the
+container starts, from environment variables, and are **ephemeral** by default: each runs one
+job, leaves no registration behind and exits. The `toolbox` tags
+(`azure-pipelines-agent:toolbox`, `github-runner:toolbox`, `gitlab-runner:toolbox`) add
+everything in the `toolbox` image. Run them under something that starts them again:
+
+| Under | A fresh container for every job? |
+| --- | --- |
+| Kubernetes, as a Deployment ([`examples/kubernetes/`](./examples/kubernetes)) | Yes: a restarted container starts from the image |
+| A systemd unit around `docker run --rm` ([below](#one-fresh-container-per-job-on-a-vm)) | Yes |
+| `docker run --restart always`, or Compose's `restart: always` ([`examples/compose/agents.yaml`](./examples/compose/agents.yaml)) | No: the same container restarts, so a job can see what the one before it left in its workspace and `HOME`. Fine for one team's pool |
+
+Each agent's default name is the image's agent name, the time it started (UTC,
+`ddmmyyyyhhmmss`) and four random hex digits, such as `azdo-agent-15112026093012-3f9a`: agents
+started in the same second, as a scaled Deployment's are, still get different names.
 
 **Azure Pipelines.** A personal access token with the **Agent Pools (Read & manage)** scope
 registers the agent; `AZP_TOKEN_FILE`, a mounted secret, keeps it out of the environment.
@@ -365,7 +428,7 @@ docker run -d --restart always \
 | `AZP_URL` | required | The organisation, such as `https://dev.azure.com/contoso` |
 | `AZP_TOKEN` or `AZP_TOKEN_FILE` | required | The token, or a file holding it |
 | `AZP_POOL` | `Default` | The agent pool |
-| `AZP_AGENT_NAME` | the hostname | The agent's name |
+| `AZP_AGENT_NAME` | `azdo-agent-<ddmmyyyyhhmmss>-<random>` | The agent's name |
 | `AZP_WORK` | `_work` | The work directory, in `/opt/azure-pipelines-agent` |
 | `AZP_EPHEMERAL` | `true` | `false` keeps the agent running jobs until the container stops |
 
@@ -385,28 +448,106 @@ docker run -d --restart always \
 | `RUNNER_TOKEN` | | A registration token |
 | `RUNNER_ACCESS_TOKEN` | | Creates registration tokens itself: a GitHub App installation token or a fine-grained token with Administration write (repository) or Self-hosted runners write (organisation) |
 | `RUNNER_JIT_CONFIG` | | A just-in-time configuration; nothing else is needed |
-| `RUNNER_NAME` | the hostname | The runner's name |
+| `RUNNER_NAME` | `github-runner-<ddmmyyyyhhmmss>-<random>` | The runner's name |
 | `RUNNER_LABELS` | | Extra labels, comma-separated, on top of `self-hosted`, `linux` and the architecture |
 | `RUNNER_GROUP` | | The runner group |
 | `RUNNER_WORKDIR` | `_work` | The work directory, in `/opt/actions-runner` |
 | `RUNNER_EPHEMERAL` | `true` | `false` keeps the runner running jobs until the container stops |
 
+**GitLab.** Create the runner in GitLab first (**Settings > CI/CD > Runners** on a project or
+group, the Admin area for an instance runner, or the API), with its tags, and give the
+container its authentication token (`glrt-...`). One token serves any number of containers:
+each shows in GitLab as one of the runner's managers. Jobs run with the shell executor, in the
+container itself.
+
+```sh
+docker run -d --restart always \
+  -e GITLAB_URL=https://gitlab.com \
+  -e GITLAB_RUNNER_TOKEN_FILE=/run/secrets/glrt -v "$PWD/glrt:/run/secrets/glrt:ro" \
+  ghcr.io/libre-devops/gitlab-runner:toolbox
+```
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `GITLAB_URL` | required | The GitLab instance, such as `https://gitlab.com` |
+| `GITLAB_RUNNER_TOKEN` or `GITLAB_RUNNER_TOKEN_FILE` | required | The runner's authentication token, or a file holding it |
+| `GITLAB_RUNNER_NAME` | `gitlab-runner-<ddmmyyyyhhmmss>-<random>` | The name in job logs |
+| `GITLAB_RUNNER_EPHEMERAL` | `true` | `false` keeps the runner running jobs until the container stops |
+
+GitLab Runner's own `RUNNER_*` variables set anything else `run-single` takes, such as
+`RUNNER_SHELL=pwsh` (on the `toolbox` tags). Builds and the cache go in `/opt/gitlab-runner`.
+
+Jobs reach the runner through the tags you gave it (or untagged, if you allowed that), and run
+with everything in its image:
+
+```yaml
+plan:
+  tags: [containers]
+  script:
+    - terraform init
+    - terraform plan
+```
+
+To create runners from automation, `POST /api/v4/user/runners` (with a token that has the
+`create_runner` scope; for example `runner_type=group_type`, `group_id` and
+`tag_list=containers`) returns the new runner's `glrt-` token.
+
 Things to know:
 
-- **Updates come as images.** Neither agent updates itself. Renovate bumps them and a release
+- **Updates come as images.** No agent updates itself. Renovate bumps them and a release
   follows, so keep pulling the moving tags: GitHub stops sending jobs to a runner 30 days after
   a newer release.
 - **Jobs run as the agent's user**, so a job can read any credential the agent holds. Scope
   the tokens as above and nothing more.
-- **No npm in the agents' own Node.** The agents run tasks with Node runtimes they bundle,
-  and those come without npm, npx and corepack, which the agents never use and whose
-  dependencies carry known vulnerabilities. A job that needs npm installs Node itself
-  (`actions/setup-node`, or the `NodeTool` task).
+- **No npm in the agents' own Node.** The Azure and GitHub agents run tasks with Node
+  runtimes they bundle, and those come without npm, npx and corepack, which the agents never
+  use and whose dependencies carry known vulnerabilities. A job that needs npm installs Node
+  itself (`actions/setup-node`, or the `NodeTool` task).
 - **Building images in jobs.** The `toolbox-podman` tags add rootless Podman and a `docker`
   command that runs it, so jobs can build, run and push images; start the agent with the flags
   in [Podman in a container](#podman-in-a-container). Container jobs and service containers,
   which the agents run through a Docker daemon, are not supported.
-- **glibc only for the runner.** GitHub publishes no musl build, so there is no Alpine flavour.
+- **GitLab jobs run in the runner's container** (the shell executor), with every tool in its
+  image. A job's `image:` and `services:` keywords are ignored: they ask GitLab to start a
+  separate container for the job, or a sidecar such as a database, which only GitLab's Docker
+  and Kubernetes executors do. A job that needs containers of its own can run them itself with
+  Podman, on the `toolbox-podman` tag. For each job in an image of its own choosing, run
+  GitLab's own runner with one of those executors, and use these images as the jobs' `image:`.
+- **glibc only for the GitHub runner.** GitHub publishes no musl build, so there is no Alpine
+  flavour.
+
+### One fresh container per job on a VM
+
+A systemd template unit runs each agent as `docker run --rm`, so every job gets a new container
+from the image. `--pull always` picks up a new release of the moving tag on the next job. For
+GitLab:
+
+```ini
+# /etc/systemd/system/gitlab-runner@.service
+[Unit]
+Description=GitLab Runner %i
+After=docker.service
+Requires=docker.service
+
+[Service]
+# GITLAB_URL=... and GITLAB_RUNNER_TOKEN=..., in a file only root can read.
+EnvironmentFile=/etc/gitlab-runner.env
+ExecStartPre=-/usr/bin/docker rm -f gitlab-runner-%i
+ExecStart=/usr/bin/docker run --rm --pull always --name gitlab-runner-%i \
+  -e GITLAB_URL -e GITLAB_RUNNER_TOKEN ghcr.io/libre-devops/gitlab-runner:toolbox
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```sh
+sudo systemctl daemon-reload
+sudo systemctl enable --now gitlab-runner@1 gitlab-runner@2 gitlab-runner@3
+```
+
+The same unit runs the other agents with their own image and variables (`-e AZP_URL -e
+AZP_TOKEN -e AZP_POOL`, or `-e RUNNER_URL -e RUNNER_ACCESS_TOKEN -e RUNNER_LABELS`).
 
 ## Podman in a container
 
@@ -418,7 +559,7 @@ image's `app` user (uid 10001), inside the container.
 | --- | --- |
 | `podman:5` | Podman on its own, with a `docker` command that runs it |
 | `azure-cli:podman`, `terraform:podman`, `toolbox:podman` | The image's tools, plus Podman |
-| `azure-pipelines-agent:toolbox-podman`, `github-runner:toolbox-podman` | Self-hosted agents whose jobs build images |
+| `azure-pipelines-agent:toolbox-podman`, `github-runner:toolbox-podman`, `gitlab-runner:toolbox-podman` | Self-hosted agents whose jobs build images |
 
 Every one of them is tested on every pull request the same way: inside the container, as uid
 10001, Podman pulls and runs an image, builds a new one, and runs that.
@@ -440,7 +581,8 @@ Also:
   `sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0` (or persist it in
   `/etc/sysctl.d/`).
 - **Image storage.** Podman keeps images in `/home/app/.local/share/containers`. Mount a volume
-  there to keep them between runs, or to keep them off the container's own filesystem.
+  there to keep them between runs, or to keep them off the container's own filesystem, as
+  [`examples/compose/toolbox.yaml`](./examples/compose/toolbox.yaml) does.
 
 ### Examples
 
@@ -577,7 +719,7 @@ levels reject both, so run them in a namespace labelled `privileged`.
 | `/opt/ansible` | Ansible's virtual environment (`ansible`, `ansible-azure`) | root |
 | `/usr/local/share/terraform` | The provider mirror and the two CLI configurations (`azure-terraform`) | root |
 | `/usr/share/ansible/collections` | Collections for every user (`ansible-azure`) | root |
-| `/opt/azure-pipelines-agent`, `/opt/actions-runner` | The agents, their registration and their work (`azure-pipelines-agent`, `github-runner`) | `app`, and any uid in group 0 |
+| `/opt/azure-pipelines-agent`, `/opt/actions-runner`, `/opt/gitlab-runner` | The agents, their registration and their work (`azure-pipelines-agent`, `github-runner`, `gitlab-runner`) | `app`, and any uid in group 0 |
 
 ### Environment
 
@@ -723,6 +865,7 @@ expiry date, after which the finding fails the gate again. In force:
 | --- | --- | --- | --- |
 | CVE-2026-84008 in System.Security.Cryptography.Pkcs 9.0.10 | The Azure Pipelines agent's bundled .NET libraries (`azure-pipelines-agent`) | Only Microsoft can update it, in an agent release; this finding applies | 2026-12-13 |
 | CVE-2026-114149 in Microsoft.AspNetCore.WebUtilities 8.0.25 | The GitHub Actions runner's bundled libraries (`github-runner`) | Only GitHub can update it, in a runner release; this finding applies | 2026-12-13 |
+| CVE-2026-116587 in go-jose 4.1.4, CVE-2026-78661 and CVE-2026-78669 in golang.org/x/net 0.58.0 | The Go modules built into GitLab Runner 19.5.3 (`gitlab-runner`) | Only GitLab can rebuild it; its main branch has both fixes, for 19.6; these findings apply | 2026-12-13 |
 
 Renovate brings in each agent release as it appears; an exception whose finding is gone has no
 effect, and is removed.
@@ -879,7 +1022,8 @@ images/common/          Distribution-neutral build steps shared by every image
 images/<image>/         An image's own install steps
 images/locks/           Generated: hash-locked Python requirements
 vex/                    VEX statements for findings shown not to apply
-examples/kubernetes/    Kubernetes manifests for Podman in a container
+examples/kubernetes/    Kubernetes manifests for Podman in a container and the CI agents
+examples/compose/       Docker Compose files: the toolbox as a shell, and the CI agents
 tests/                  Smoke tests, run in every image as the app user
 scripts/                Matrix, tags, pins, VEX and docs (images.py), and CI helpers
 .github/workflows/      Build, Release, Pins and Scan

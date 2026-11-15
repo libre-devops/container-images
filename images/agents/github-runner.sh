@@ -19,7 +19,8 @@
 #                        write on a repository, or Self-hosted runners write
 #                        on an organisation).
 # Optional:
-#   RUNNER_NAME          The runner's name (default: the container's hostname)
+#   RUNNER_NAME          The runner's name (default:
+#                        github-runner-<ddmmyyyyhhmmss>-<4 random hex digits>)
 #   RUNNER_LABELS        Extra labels, comma-separated
 #   RUNNER_GROUP         The runner group (organisations)
 #   RUNNER_WORKDIR       The work directory (default: _work in the runner directory)
@@ -89,8 +90,12 @@ if [ -z "$registration" ]; then
 	registration=$(token registration-token) || die "could not get a registration token for $RUNNER_URL with RUNNER_ACCESS_TOKEN"
 fi
 
+# Unique by default: --replace takes over a registration with the same name,
+# so runners started in the same second (a scaled Deployment) must not share
+# one.
+name=${RUNNER_NAME:-github-runner-$(date -u +%d%m%Y%H%M%S)-$(printf '%04x' "$RANDOM")}
 args=(--unattended --url "$RUNNER_URL" --token "$registration"
-	--name "${RUNNER_NAME:-$HOSTNAME}" --work "${RUNNER_WORKDIR:-_work}"
+	--name "$name" --work "${RUNNER_WORKDIR:-_work}"
 	--replace --disableupdate)
 [ -n "${RUNNER_LABELS:-}" ] && args+=(--labels "$RUNNER_LABELS")
 [ -n "${RUNNER_GROUP:-}" ] && args+=(--runnergroup "$RUNNER_GROUP")
