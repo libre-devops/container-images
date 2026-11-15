@@ -99,7 +99,7 @@ put() {
 }
 
 case $tool in
-shfmt | jq | hadolint | cosign) install -m 0755 "$file" "$bin/$tool" ;;
+shfmt | jq | hadolint | cosign | gitlab-runner) install -m 0755 "$file" "$bin/$tool" ;;
 shellcheck | trivy | zizmor | actionlint) unpack && put "$tool" ;;
 uv) unpack && put uv uvx ;;
 go)

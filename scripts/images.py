@@ -135,6 +135,15 @@ OPENSSH_RELEASE_KEY = "7168B983815A5EEF59A4ADFD2A3F414E736060BA"
 HASHICORP_KEY = "C874011F0AB405110D02105534365D9472D7468F"
 MICROSOFT_PROVIDER_KEY = "404BCB5E66712DE36720E0C36F0B91BDE98478CF"
 PROVIDER_KEYS = {"hashicorp": HASHICORP_KEY, "azure": MICROSOFT_PROVIDER_KEY, "microsoft": MICROSOFT_PROVIDER_KEY}
+# GitLab Runner is one static binary per architecture on GitLab's download
+# bucket. Each release's release.sha256 is signed with GitLab's package
+# signing key, published on packages.gitlab.com; a release is pinned only once
+# that signature verifies. GitLab extends the key's expiry in place; a new key
+# (a new fingerprint) fails pinning until it is checked and named here.
+GITLAB_RUNNER_DOWNLOADS = "https://gitlab-runner-downloads.s3.amazonaws.com"
+GITLAB_RUNNER_KEY_URL = "https://packages.gitlab.com/runner/gitlab-runner/gpgkey/runner-gitlab-runner-49F16C5CC3A0F81F.pub.gpg"
+GITLAB_RUNNER_KEY = "931DA69CFA3AFEBBC97DAA8C6C57C29C6BA75A4E"
+GITLAB_RUNNER_ARCHES = ("amd64", "arm64")
 TERRAFORM_REGISTRY = "https://registry.terraform.io"
 PROVIDER_PLATFORMS = {"amd64": ("linux", "amd64"), "arm64": ("linux", "arm64")}
 # A provider release joins the mirror once it is this many days old, as
@@ -144,6 +153,8 @@ OTHER_DOWNLOADS: dict[str, tuple[str, ...]] = {
     "go": GO_ARCHES,
     "openssh": ("any",),
     "azure-pipelines-agent": tuple(AZURE_PIPELINES_AGENT),
+    # Static, so the same binary serves musl bases.
+    "gitlab-runner": GITLAB_RUNNER_ARCHES,
     **{name: ("any",) for name in GALAXY_COLLECTIONS},
 }
 
@@ -595,11 +606,30 @@ def pin_openssh(version: str) -> dict:
 
 
 def sums_entry(sums: bytes, filename: str) -> str:
+    """A file's SHA-256 from a checksum list (sha256sum's format, or one with a
+    tab between digest and name)."""
     for line in sums.decode().splitlines():
-        digest, _, name = line.partition("  ")
-        if name.strip() == filename:
-            return digest
+        parts = line.split(None, 1)
+        if len(parts) == 2 and parts[1].strip().removeprefix("*") == filename:
+            return parts[0]
     raise Failure(f"no checksum for {filename}")
+
+
+def pin_gitlab_runner(version: str) -> dict:
+    """GitLab Runner's Linux binaries, with the SHA-256 GitLab lists for each
+    in the release's release.sha256, once its signature verifies against
+    GITLAB_RUNNER_KEY."""
+    release = f"{GITLAB_RUNNER_DOWNLOADS}/v{version}"
+    sums = fetch_bytes(f"{release}/release.sha256")
+    if not gpg_verified(sums, fetch_bytes(f"{release}/release.sha256.asc"), fetch_bytes(GITLAB_RUNNER_KEY_URL), GITLAB_RUNNER_KEY):
+        raise Failure(f"the checksums of GitLab Runner {version} are not signed by GitLab's key {GITLAB_RUNNER_KEY}")
+    pinned = {}
+    for arch in GITLAB_RUNNER_ARCHES:
+        path = f"binaries/gitlab-runner-linux-{arch}"
+        digest = sums_entry(sums, path)
+        pinned[arch] = {"url": f"{release}/{path}", "sha256": digest}
+        note(f"  gitlab-runner {version} {arch}: signature verified, {digest}")
+    return pinned
 
 
 def pin_provider(source: str, version: str) -> dict:
@@ -665,6 +695,8 @@ def pin_download(tool: str, version: str, token: str | None) -> dict:
         return pin_openssh(version)
     if tool == "azure-pipelines-agent":
         return pin_azure_pipelines_agent(version, token)
+    if tool == "gitlab-runner":
+        return pin_gitlab_runner(version)
     if tool in GALAXY_COLLECTIONS:
         return pin_galaxy_collection(tool, version)
     repo, tag_pattern, asset_pattern, arches = DOWNLOADS[tool]

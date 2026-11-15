@@ -11,7 +11,9 @@
 # The token needs only the Agent Pools (Read & manage) scope: jobs run as the
 # agent's user and could read it. For GitHub Actions, the same shape works
 # with ghcr.io/libre-devops/github-runner:toolbox-podman and the RUNNER_*
-# settings in the README; actions-runner-controller is the other route.
+# settings in the README; actions-runner-controller is the other route. For
+# GitLab, use ghcr.io/libre-devops/gitlab-runner:toolbox-podman with the
+# GITLAB_* settings; GitLab's own Helm chart is the other route.
 apiVersion: apps/v1
 kind: Deployment
 metadata:

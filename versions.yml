@@ -303,3 +303,16 @@ images:
       - { version: "2.338.2", base: python-3.12, flavour: toolbox, atop: toolbox, latest: true, moving: [major], contents: "GitHub Actions runner {version} with everything in toolbox {toolbox}: Azure CLI {azure_cli}, Terraform {terraform}, PowerShell {powershell} with Az and Microsoft.Graph, Python {python}" }
       # renovate: datasource=github-releases depName=actions/runner extractVersion=^v(?<version>.+)$
       - { version: "2.338.2", base: python-3.12, flavour: toolbox-podman, atop: toolbox, base_stage: podman, latest: true, moving: [major], contents: "GitHub Actions runner {version} with everything in toolbox {toolbox} and Podman {podman}, which jobs can use to build and run images (rootless; see the README for the outer container's flags)" }
+
+  # GitLab Runner with the shell executor: jobs run in the container itself.
+  gitlab-runner:
+    description: A self-hosted GitLab Runner that runs jobs in the container, set up from environment variables
+    contents: GitLab Runner {version} (shell executor), with git, curl, jq, ShellCheck and shfmt
+    download: gitlab-runner
+    versions:
+      # renovate: datasource=gitlab-releases depName=gitlab-org/gitlab-runner extractVersion=^v(?<version>.+)$
+      - { version: "19.5.3", base: debian, latest: true, moving: [major] }
+      # renovate: datasource=gitlab-releases depName=gitlab-org/gitlab-runner extractVersion=^v(?<version>.+)$
+      - { version: "19.5.3", base: python-3.12, flavour: toolbox, atop: toolbox, latest: true, moving: [major], contents: "GitLab Runner {version} (shell executor) with everything in toolbox {toolbox}: Azure CLI {azure_cli}, Terraform {terraform}, PowerShell {powershell} with Az and Microsoft.Graph, Python {python}" }
+      # renovate: datasource=gitlab-releases depName=gitlab-org/gitlab-runner extractVersion=^v(?<version>.+)$
+      - { version: "19.5.3", base: python-3.12, flavour: toolbox-podman, atop: toolbox, base_stage: podman, latest: true, moving: [major], contents: "GitLab Runner {version} (shell executor) with everything in toolbox {toolbox} and Podman {podman}, which jobs can use to build and run images (rootless; see the README for the outer container's flags)" }

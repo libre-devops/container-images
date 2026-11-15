@@ -10,7 +10,8 @@
 #                    (a mounted secret), which keeps it out of the environment.
 # Optional:
 #   AZP_POOL         The agent pool (default: Default)
-#   AZP_AGENT_NAME   The agent's name (default: the container's hostname)
+#   AZP_AGENT_NAME   The agent's name (default:
+#                    azdo-agent-<ddmmyyyyhhmmss>-<4 random hex digits>)
 #   AZP_WORK         The work directory (default: _work in the agent directory)
 #   AZP_EPHEMERAL    true (default): one job, then deregister and exit.
 #                    false: keep running jobs until stopped, then deregister.
@@ -47,12 +48,17 @@ esac
 # token's variables out of that list.
 export VSO_AGENT_IGNORE="AZP_TOKEN,AZP_TOKEN_FILE${VSO_AGENT_IGNORE:+,$VSO_AGENT_IGNORE}"
 
+# Unique by default: --replace below takes over a registration with the same
+# name, so agents started in the same second (a scaled Deployment) must not
+# share one.
+name=${AZP_AGENT_NAME:-azdo-agent-$(date -u +%d%m%Y%H%M%S)-$(printf '%04x' "$RANDOM")}
+
 cd "$agent"
 ./config.sh --unattended \
 	--url "$AZP_URL" \
 	--auth pat --token "$token" \
 	--pool "${AZP_POOL:-Default}" \
-	--agent "${AZP_AGENT_NAME:-$HOSTNAME}" \
+	--agent "$name" \
 	--work "${AZP_WORK:-_work}" \
 	--replace \
 	--acceptTeeEula
