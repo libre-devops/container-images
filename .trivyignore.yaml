@@ -25,8 +25,9 @@ vulnerabilities:
     statement: GitHub Actions runner 2.338.2 bundles Microsoft.AspNetCore.WebUtilities 8.0.25; fixed in 8.0.34, awaiting a runner release. Accepted risk, time-boxed.
     expired_at: 2026-12-13
   # GitLab Runner is one Go binary built by GitLab, with these modules
-  # compiled in. GitLab's main branch already has both fixes, for the 19.6
-  # release. Same terms as the agents above, applied on 2026-11-15.
+  # compiled in, which only GitLab can rebuild. These findings apply. They
+  # were accepted by the maintainer on 2026-11-15, on the same terms as the
+  # agents' above; GitLab's main branch already has both fixes, for 19.6.
   - id: CVE-2026-116587
     paths: ["usr/local/bin/gitlab-runner"]
     statement: GitLab Runner 19.5.3 is built with github.com/go-jose/go-jose/v4 4.1.4; fixed in 4.1.6, awaiting a runner release. Accepted risk, time-boxed.

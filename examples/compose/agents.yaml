@@ -1,0 +1,62 @@
+# Self-hosted CI agents with Docker Compose. One profile per agent, so you
+# start only the ones you use. Settings come from a .env file next to this one
+# (cp .env.example .env, then fill it in). Each agent receives only its own
+# settings, and removes its token from its environment before any job runs.
+#
+#   docker compose -f agents.yaml --profile gitlab up -d --scale gitlab-runner=3
+#   docker compose -f agents.yaml --profile azure --profile github up -d
+#   docker compose -f agents.yaml --profile gitlab logs -f
+#
+# Each container runs one job and exits, and restart: always starts it again.
+# That restarts the same container rather than a new one, so a job can see
+# what the one before it left (its workspace, anything in HOME). That is fine
+# for one team's pool. For a fresh container every job, run each agent from a
+# systemd unit around `docker run --rm`, or on Kubernetes (see the README).
+#
+# To let jobs build images, use the toolbox-podman tag and merge in the
+# settings Podman in a container needs: add `<<: *podman` to the service.
+
+x-podman: &podman
+  devices: ["/dev/fuse"]
+  security_opt:
+    - seccomp=unconfined
+    - apparmor=unconfined
+    - systempaths=unconfined
+    - label=disable
+
+services:
+  azure-pipelines-agent:
+    image: ghcr.io/libre-devops/azure-pipelines-agent:toolbox
+    profiles: [azure]
+    restart: always
+    environment:
+      AZP_URL: ${AZP_URL:-}
+      AZP_TOKEN: ${AZP_TOKEN:-}
+      AZP_POOL: ${AZP_POOL:-Default}
+
+  github-runner:
+    image: ghcr.io/libre-devops/github-runner:toolbox
+    profiles: [github]
+    restart: always
+    environment:
+      RUNNER_URL: ${RUNNER_URL:-}
+      RUNNER_ACCESS_TOKEN: ${RUNNER_ACCESS_TOKEN:-}
+      RUNNER_LABELS: ${RUNNER_LABELS:-}
+
+  gitlab-runner:
+    image: ghcr.io/libre-devops/gitlab-runner:toolbox
+    profiles: [gitlab]
+    restart: always
+    environment:
+      GITLAB_URL: ${GITLAB_URL:-https://gitlab.com}
+      GITLAB_RUNNER_TOKEN: ${GITLAB_RUNNER_TOKEN:-}
+
+  # The same GitLab runner, with Podman for jobs that build images.
+  gitlab-runner-podman:
+    <<: *podman
+    image: ghcr.io/libre-devops/gitlab-runner:toolbox-podman
+    profiles: [gitlab-podman]
+    restart: always
+    environment:
+      GITLAB_URL: ${GITLAB_URL:-https://gitlab.com}
+      GITLAB_RUNNER_TOKEN: ${GITLAB_RUNNER_TOKEN:-}
