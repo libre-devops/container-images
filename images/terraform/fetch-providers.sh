@@ -44,7 +44,9 @@ for item in $TERRAFORM_PROVIDERS; do
 	dest=$mirror/registry.terraform.io/$source
 	file=$dest/terraform-provider-${type}_${version}_linux_${arch}.zip
 	mkdir -p "$dest"
-	curl -fsSL --retry 5 --retry-connrefused -o "$file" "$url"
+	# --retry-all-errors: a reset connection is not one of the errors --retry
+	# covers on its own. The SHA-256 check below catches a bad file.
+	curl -fsSL --retry 5 --retry-all-errors -o "$file" "$url"
 	actual=$(sha256sum "$file" | cut -d ' ' -f 1)
 	[ "$actual" = "$sha" ] || die "SHA-256 mismatch for $source $version: pinned $sha, downloaded $actual"
 	echo "fetch-providers: $source $version matches its pinned SHA-256"

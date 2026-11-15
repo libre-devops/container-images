@@ -71,7 +71,9 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 file=$work/${url##*/}
 
-curl -fsSL --retry 5 --retry-connrefused -o "$file" "$url"
+# --retry-all-errors: a reset connection (curl exit 56) is not one of the
+# errors --retry covers on its own. The SHA-256 check below catches a bad file.
+curl -fsSL --retry 5 --retry-all-errors -o "$file" "$url"
 actual=$(sha256sum "$file" | cut -d ' ' -f 1)
 [ "$actual" = "$sha" ] || die "SHA-256 mismatch for $url: pinned $sha, downloaded $actual"
 echo "fetch-tool: ${url##*/} matches its pinned SHA-256"
