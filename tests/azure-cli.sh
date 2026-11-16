@@ -37,3 +37,13 @@ if [ -n "${EXPECT_LDO_CLI:-}" ]; then
 	[ "$got" = "$EXPECT_LDO_CLI" ] || fail "ldo-cli is $got, want $EXPECT_LDO_CLI"
 	ok "ldo-cli $EXPECT_LDO_CLI"
 fi
+
+# The functions flavour: Azure Functions Core Tools.
+if [ -n "${EXPECT_AZURE_FUNCTIONS_CORE_TOOLS:-}" ]; then
+	got=$(func --version | tail -n 1)
+	[ "$got" = "$EXPECT_AZURE_FUNCTIONS_CORE_TOOLS" ] || fail "func is $got, want $EXPECT_AZURE_FUNCTIONS_CORE_TOOLS"
+	cd "$(mktemp -d)"
+	func init smoke --worker-runtime python --model V2 >/dev/null || fail "func init cannot make a Python project"
+	[ -f smoke/function_app.py ] || fail "func init wrote no function_app.py"
+	ok "Azure Functions Core Tools $EXPECT_AZURE_FUNCTIONS_CORE_TOOLS makes a Python project"
+fi

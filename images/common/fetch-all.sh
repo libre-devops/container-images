@@ -17,7 +17,11 @@ lib=$(dirname "$0")
 sh "$lib/fetch-tool.sh" "$dir/common" shellcheck "${SHELLCHECK_ASSET:?}"
 sh "$lib/fetch-tool.sh" "$dir/common" jq "${JQ_ASSET:?}"
 for tool in uv ldo-cli powershell azure-azcollection containers-podman community-general ansible-posix theforeman-foreman \
-	just azure-pipelines-agent github-runner gitlab-runner; do
+	just azure-functions-core-tools azure-pipelines-agent github-runner gitlab-runner; do
+	# Every root exists, even for a tool this build skips, so a stage can
+	# copy one unconditionally (azure-cli copies func's, which only its
+	# functions flavour fetches).
+	mkdir -p "$dir/$tool"
 	var=$(echo "$tool" | tr 'a-z-' 'A-Z_')_ASSET
 	eval "spec=\${$var:-}"
 	if [ -n "$spec" ]; then

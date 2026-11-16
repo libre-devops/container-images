@@ -66,7 +66,8 @@ Twelve images, each a thin layer of pinned tools on a hardened base:
   collection and every Python library its modules need.
 - **`azure-cli`**: the Azure CLI in its own virtual environment, and
   [`ldo-cli`](https://github.com/libre-devops/ldo-cli). The current release, plus 2.72.0 as a
-  long-lived line.
+  long-lived line, and a `functions` flavour with Azure Functions Core Tools (`func`) (see
+  [Azure Functions](#azure-functions)).
 - **`terraform`**: tenv with a default Terraform, TFLint, terraform-docs and Conftest. A
   repository's `.terraform-version` wins over the default. Also as an Alpine variant
   (`-alpine` tags), about a third smaller.
@@ -249,6 +250,7 @@ Locally, `just build`, `just test`, `just scan` and `just lint` run the same ste
 | `podman` | `5` `latest`<br>`5-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | Podman 5 from the distribution, with crun, fuse-overlayfs and a docker command, rootless for the app user | `ghcr.io/libre-devops/podman:5`<br>`docker.io/libredevops/podman:5` |
 | `azure-cli` | `2.92.0` `latest`<br>`2.92.0-py3.12-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | Azure CLI 2.92.0 on Python 3.12, ldo-cli 0.8.1 | `ghcr.io/libre-devops/azure-cli:2.92.0`<br>`docker.io/libredevops/azure-cli:2.92.0` |
 | `azure-cli` | `2.92.0-podman` `podman`<br>`2.92.0-py3.12-podman-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | Azure CLI 2.92.0 on Python 3.12, ldo-cli 0.8.1 | `ghcr.io/libre-devops/azure-cli:2.92.0-podman`<br>`docker.io/libredevops/azure-cli:2.92.0-podman` |
+| `azure-cli` | `2.92.0-functions` `functions`<br>`2.92.0-py3.12-functions-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | Azure CLI 2.92.0 on Python 3.12, ldo-cli 0.8.1, and Azure Functions Core Tools 4.16.1 (func) | `ghcr.io/libre-devops/azure-cli:2.92.0-functions`<br>`docker.io/libredevops/azure-cli:2.92.0-functions` |
 | `azure-cli` | `2.72.0`<br>`2.72.0-py3.12-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | Azure CLI 2.72.0 on Python 3.12, ldo-cli 0.8.1 | `ghcr.io/libre-devops/azure-cli:2.72.0`<br>`docker.io/libredevops/azure-cli:2.72.0` |
 | `terraform` | `1.17.2` `1.17` `1` `latest`<br>`1.17.2-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | Terraform 1.17.2 by default (tenv 4.15.1; a repository's .terraform-version wins), TFLint 0.66.0, terraform-docs 0.24.0, Conftest 0.71.1 | `ghcr.io/libre-devops/terraform:1.17.2`<br>`docker.io/libredevops/terraform:1.17.2` |
 | `terraform` | `1.17.2-alpine` `1.17-alpine` `1-alpine` `alpine`<br>`1.17.2-alpine-YYYYMMDD` | `dhi.io/alpine-base:3.24-alpine3.24-dev` | Terraform 1.17.2 by default (tenv 4.15.1; a repository's .terraform-version wins), TFLint 0.66.0, terraform-docs 0.24.0, Conftest 0.71.1 | `ghcr.io/libre-devops/terraform:1.17.2-alpine`<br>`docker.io/libredevops/terraform:1.17.2-alpine` |
@@ -290,6 +292,7 @@ Every image also has bash, git, curl, ca-certificates, ShellCheck 0.11.0, shfmt 
 | A specific CPython | `python:<major.minor>` | One tag per supported CPython |
 | The smallest Terraform image | `terraform:alpine` | About a third smaller than the Debian image. musl, so not for Azure Pipelines container jobs, which need glibc |
 | The Azure CLI behind TLS inspection that rejects Python 3.13's stricter checks | `azure-cli:2.72.0` | Long-lived line on Python 3.12 |
+| Building, running or publishing Azure Functions apps | `azure-cli:functions` | Azure Functions Core Tools (`func`) with the Azure CLI; about 600 MB more than `azure-cli`, so only on this flavour |
 | Your organisation's CA, mirrors or internal tools | A thin layer `FROM` a pinned digest of one of these | See [Adding an organisation's CA bundle](#adding-an-organisations-ca-bundle) |
 
 ## Tags, versions and support
@@ -313,7 +316,7 @@ Every release records its digests in this README and in
 | `python` | Every CPython release from 3.12 upwards that upstream still supports |
 | `ansible` | The current ansible-core, on its own and with Podman (`-podman` tags), and 2.16 for managed hosts on Python 3.6 |
 | `ansible-azure` | The current azure.azcollection, on the current `ansible` |
-| `azure-cli` | The current release, and 2.72.0 as a long-lived line for networks whose TLS inspection fails the stricter certificate checks in Python 3.13 and later |
+| `azure-cli` | The current release, on its own, with Podman (`-podman` tags) and with Azure Functions Core Tools (`-functions` tags), and 2.72.0 as a long-lived line for networks whose TLS inspection fails the stricter certificate checks in Python 3.13 and later |
 | `terraform` | The current Terraform 1.x as the default, on Debian and on Alpine; any other version through `.terraform-version` |
 | `azure-terraform` | The current `terraform`, with the newest three minor releases of azurerm, azapi and msgraph |
 | `powershell` | The current PowerShell LTS |
@@ -470,6 +473,27 @@ docker run --rm -v "$PWD:/work" ghcr.io/libre-devops/azure-terraform:1 terraform
   always needs HCP Terraform or your Terraform Enterprise host (`TF_STACKS_HOSTNAME`). The image
   does not carry the plugin: its current release (1.4.0) is built with a Go version that has
   fixable high vulnerabilities, so it fails the scan gate.
+
+### Azure Functions
+
+`azure-cli:functions` adds [Azure Functions Core Tools](https://github.com/Azure/azure-functions-core-tools)
+(`func`) to the Azure CLI, to create, run and publish function apps. Log in with the Azure CLI
+as above, then publish from the project's directory:
+
+```sh
+docker run --rm -it --user "$(id -u):0" -v "$PWD:/work" -v "$HOME/.azure:/home/app/.azure" \
+  ghcr.io/libre-devops/azure-cli:functions func azure functionapp publish my-function-app
+```
+
+- **Languages:** `func` brings the Python, Node.js and PowerShell language workers, and runs
+  .NET apps in the isolated worker model. The image has the Azure CLI's Python, 3.12; a Node.js
+  or .NET project needs that runtime or SDK to build and run locally. The Java worker is left
+  out, since running Java functions needs a JDK, which the image does not have.
+- **No in-process .NET hosts.** The release's in-process hosts (`in-proc6`, `in-proc8`, about
+  750 MB, amd64 only) are left out: Microsoft's support for the in-process model ended on
+  10 November 2026. Move such apps to the isolated worker model.
+- **Size:** about 600 MB on top of `azure-cli`, which is why it is a flavour rather than in
+  every `azure-cli` tag, `toolbox` or `cicd-helper`.
 
 ### Ansible
 
@@ -906,6 +930,7 @@ levels reject both, so run them in a namespace labelled `privileged`.
 | `/home/app` | `HOME` for every user the image runs as | `app`, and any uid in group 0 |
 | `/work` | Working directory; mount your project here | `app`, and any uid in group 0 |
 | `/opt/az` | The Azure CLI's virtual environment (`azure-cli`, `toolbox`, `cicd-helper`) | root |
+| `/opt/azure-functions-core-tools` | Azure Functions Core Tools (`azure-cli:functions`) | root |
 | `/opt/ldo-cli` | ldo-cli's virtual environment (`azure-cli`, `toolbox`) | root |
 | `/opt/microsoft/powershell/7` | PowerShell (`powershell`, `toolbox`, `cicd-helper`) | root |
 | `/usr/local/share/powershell/Modules` | Pinned PowerShell modules, for all users | root |
@@ -931,6 +956,7 @@ Set by the images; override any of them with `-e` or your CI system's environmen
 | `TF_CLI_CONFIG_FILE` | `/usr/local/share/terraform/airgapped.tfrc` | `azure-terraform`, `cicd-helper` | Mirrored providers install from the mirror; `registry.tfrc` uses the registry for everything |
 | `PYTHONUNBUFFERED` | `1` | `python`, `azure-cli`, `toolbox`, `cicd-helper` | Unbuffered output in CI logs |
 | `AZURE_CORE_COLLECT_TELEMETRY` | `no` | `azure-cli`, `toolbox`, `cicd-helper` | No Azure CLI telemetry |
+| `FUNCTIONS_CORE_TOOLS_TELEMETRY_OPTOUT` | `1` | `azure-cli` | No Azure Functions Core Tools telemetry |
 | `TENV_ROOT` | `/home/app/.tenv` | `terraform`, `toolbox`, `cicd-helper` | Where tenv keeps Terraform versions |
 | `TENV_AUTO_INSTALL` | `true` | `terraform`, `toolbox`, `cicd-helper` | A `.terraform-version` installs on demand; set `false` offline |
 | `CHECKPOINT_DISABLE` | `1` | `terraform`, `toolbox`, `cicd-helper` | No HashiCorp update checks |
@@ -1091,8 +1117,9 @@ expiry date, after which the finding fails the gate again. In force:
 | CVE-2026-84008 in System.Security.Cryptography.Pkcs 9.0.10 | The Azure Pipelines agent's bundled .NET libraries (`azure-pipelines-agent`) | Only Microsoft can update it, in an agent release; this finding applies | 2026-12-13 |
 | CVE-2026-114149 in Microsoft.AspNetCore.WebUtilities 8.0.25 | The GitHub Actions runner's bundled libraries (`github-runner`) | Only GitHub can update it, in a runner release; this finding applies | 2026-12-13 |
 | CVE-2026-116587 in go-jose 4.1.4, CVE-2026-78661 and CVE-2026-78669 in golang.org/x/net 0.58.0 | The Go modules built into GitLab Runner 19.5.3 (`gitlab-runner`) | Only GitLab can rebuild it; its main branch has both fixes, for 19.6; these findings apply | 2026-12-13 |
+| CVE-2026-84008 in System.Security.Cryptography.Pkcs; CVE-2026-96222, CVE-2026-96958, CVE-2026-96959 and CVE-2026-96960 in System.Security.Cryptography.Xml | The PowerShell language worker that Azure Functions Core Tools 4.16.1 bundles (`azure-cli:functions`) | Only Microsoft can update it, in a Core Tools release; these findings apply | 2026-12-16 |
 
-Renovate brings in each agent release as it appears; an exception whose finding is gone has no
+Renovate brings in each agent and Core Tools release as it appears; an exception whose finding is gone has no
 effect, and is removed.
 
 ### Verifying an image

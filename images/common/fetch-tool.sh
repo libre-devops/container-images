@@ -109,6 +109,18 @@ go)
 	rm -rf "$root/usr/local/go"
 	tar -xzf "$file" -C "$root/usr/local"
 	;;
+# Left out: the in-process .NET hosts (in-proc6 and in-proc8, amd64 only,
+# about 750 MB), since Microsoft's support for the in-process model ended on
+# 10 November 2026; and the Java worker, which needs a JDK the image does not
+# have and bundles a vulnerable Guava. Isolated .NET apps, Python, Node.js and
+# PowerShell run as before.
+azure-functions-core-tools)
+	dest=$root/opt/azure-functions-core-tools
+	mkdir -p "$dest"
+	unzip -q "$file" -d "$dest" -x 'in-proc6/*' 'in-proc8/*' 'workers/java/*'
+	chmod 0755 "$dest/func" "$dest/createdump"
+	ln -sf /opt/azure-functions-core-tools/func "$bin/func"
+	;;
 powershell)
 	dest=$root/opt/microsoft/powershell/7
 	mkdir -p "$dest"
