@@ -3,8 +3,8 @@
   "@id": "https://github.com/libre-devops/container-images/vex/libre-devops.openvex.json",
   "author": "Libre DevOps",
   "role": "Image maintainer",
-  "timestamp": "2026-11-07T00:00:00Z",
-  "version": 1,
+  "timestamp": "2026-11-16T00:00:00Z",
+  "version": 2,
   "statements": [
     {
       "vulnerability": { "name": "CVE-2025-47273" },
@@ -13,6 +13,14 @@
       "justification": "vulnerable_code_not_present",
       "impact_statement": "No image installs setuptools 70.3.0. The finding comes from pip's pip/_vendor/vendor.txt: pip vendors only pkg_resources from setuptools 70.3.0, and setuptools.package_index, the module the advisory concerns, is not part of it. Installed setuptools is locked and audited by `just lock`, so a real vulnerable copy would be raised, not hidden by this statement.",
       "timestamp": "2026-11-07T00:00:00Z"
+    },
+    {
+      "vulnerability": { "name": "CVE-2026-6653" },
+      "products": [{ "@id": "pkg:deb/debian/libxml2@2.12.7%2Bdfsg%2Breally2.9.14-2.1%2Bdeb13u3%2Bdhi3" }],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "Only cicd-helper carries libxml2, which Debian's rpm package pulls in through libarchive (rpm -> libarchive13t64 -> libxml2); the image has rpm because theforeman.foreman reads the headers of the RPMs it uploads with it, and Debian ships no rpm command without libarchive. The flaw is in xmlParseInternalSubset, the parser of an XML document's DTD. libarchive calls libxml2 only to read XAR archives; rpm reads packages with its own code and writes archives (rpm2archive) without parsing XML, nothing installs a libarchive front end such as bsdtar, and nothing else in the image links libxml2, so the function is never reached. Debian rates the issue minor and will not fix it in Debian 13 (no-dsa). The statement names this exact build of libxml2: a new build, or libxml2 in another image, is examined afresh.",
+      "timestamp": "2026-11-16T00:00:00Z"
     }
   ]
 }

@@ -1,6 +1,7 @@
 #!/bin/sh
 # Installs the Azure CLI into its own virtual environment at /opt/az, and
-# ldo-cli into another at /opt/ldo-cli, from hash-locked requirements.
+# ldo-cli into another at /opt/ldo-cli, from hash-locked requirements. An empty
+# ldo-cli lock leaves ldo-cli out, for images that do without it.
 #
 # The locks (images/locks/, written by `just lock`) pin every dependency by
 # version and SHA-256, with any dependency that has a known vulnerability
@@ -24,7 +25,7 @@ ldo_lock=$3
 wheels=$4
 : "${PYTHON_MINOR:?}"
 [ -f "$az_lock" ] || die "no lock at $az_lock; run just lock"
-[ -f "$ldo_lock" ] || die "no lock at $ldo_lock; run just lock"
+[ -z "$ldo_lock" ] || [ -f "$ldo_lock" ] || die "no lock at $ldo_lock; run just lock"
 
 export UV_NO_CACHE=1 UV_PYTHON_DOWNLOADS=never
 python=$(command -v "python$PYTHON_MINOR")
@@ -41,6 +42,7 @@ exec /opt/az/bin/python -Im azure.cli "$@"
 EOF
 chmod 0755 /usr/local/bin/az
 
+[ -n "$ldo_lock" ] || exit 0
 set -- "$wheels"/*.whl
 [ "$#" -eq 1 ] && [ -f "$1" ] || die "expected exactly one ldo-cli wheel in $wheels"
 "$uv" venv --python "$python" /opt/ldo-cli

@@ -30,7 +30,10 @@ az storage account --help >/dev/null
 az config set core.only_show_errors=true >/dev/null
 ok "the Azure CLI loads its command modules and patched libraries"
 
-ldo --help >/dev/null
-got=$(/opt/ldo-cli/bin/python -c 'import importlib.metadata as m; print(m.version("libre-devops-helpers"))')
-[ "$got" = "$EXPECT_LDO_CLI" ] || fail "ldo-cli is $got, want $EXPECT_LDO_CLI"
-ok "ldo-cli $EXPECT_LDO_CLI"
+# Images that do without ldo-cli (cicd-helper) have no EXPECT_LDO_CLI.
+if [ -n "${EXPECT_LDO_CLI:-}" ]; then
+	ldo --help >/dev/null
+	got=$(/opt/ldo-cli/bin/python -c 'import importlib.metadata as m; print(m.version("libre-devops-helpers"))')
+	[ "$got" = "$EXPECT_LDO_CLI" ] || fail "ldo-cli is $got, want $EXPECT_LDO_CLI"
+	ok "ldo-cli $EXPECT_LDO_CLI"
+fi

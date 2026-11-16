@@ -89,6 +89,10 @@ tools:
   terraform-docs: 0.24.0
   # renovate: datasource=github-releases depName=open-policy-agent/conftest extractVersion=^v(?<version>.+)$
   conftest: 0.71.1
+  # renovate: datasource=github-releases depName=mikefarah/yq extractVersion=^v(?<version>.+)$
+  yq: 4.54.3
+  # renovate: datasource=github-releases depName=casey/just
+  just: 1.59.0
   # Built from source (images/common/build-openssh.sh), at the latest release,
   # because Debian's openssh-client lags upstream security fixes: CVE-2026-60002
   # (critical; fixed in OpenSSH 10.4) was unfixed in Debian 13 when this was
@@ -102,6 +106,14 @@ tools:
   # In every ansible image: what Molecule's Podman scenarios drive Podman with.
   # renovate: datasource=galaxy-collection depName=containers.podman
   containers-podman: 1.21.2
+  # The collections the libre_devops roles use, in cicd-helper. community.general
+  # stays on 11.x, which the roles' requirements.yml allows (>=10,<12).
+  # renovate: datasource=galaxy-collection depName=community.general
+  community-general: 11.4.10
+  # renovate: datasource=galaxy-collection depName=ansible.posix
+  ansible-posix: 2.2.2
+  # renovate: datasource=galaxy-collection depName=theforeman.foreman
+  theforeman-foreman: 6.0.0
   # renovate: datasource=nuget depName=Az registryUrl=https://www.powershellgallery.com/api/v2/
   az-powershell: 16.5.0
   # renovate: datasource=nuget depName=Microsoft.Graph registryUrl=https://www.powershellgallery.com/api/v2/
@@ -134,6 +146,27 @@ terraform_providers:
   hashicorp/azurerm: ["5.13.0", "5.12.0", "5.11.0"]
   azure/azapi: ["2.13.0", "2.12.0", "2.11.0"]
   microsoft/msgraph: ["0.6.0", "0.5.0", "0.4.0"]
+
+# Galaxy roles that cicd-helper installs for every user: every role in each
+# namespace here, at its newest release. `just pin` rewrites the lists, daily
+# through the Pins workflow, so a new role or release arrives by itself in a
+# pull request that merges once Build passes; `just lock` pins the SHA-256 of
+# each release's archive (a standalone role's release is its GitHub
+# repository's archive at that tag). Nobody edits these lists.
+ansible_roles:
+  libre_devops:
+    aria_automation_deployment: 1.0.0
+    azure_arc: 1.0.0
+    entra_device_groups: 1.0.0
+    mde_linux: 1.1.1
+    mde_linux_checks: 1.0.1
+    puppet_agent: 1.0.0
+    python: 1.0.0
+    rpm_repo_download: 1.0.0
+    satellite_content_upload: 1.0.0
+    ssh_bootstrap: 1.0.0
+    standalone_package_installer: 1.0.0
+    test_results_report: 1.0.0
 
 # In every image, on top of bash, git, curl and ca-certificates.
 common: [shellcheck, shfmt, jq]
@@ -169,8 +202,10 @@ ci: [uv, shellcheck, shfmt, hadolint, trivy, cosign, zizmor, actionlint]
 # names for images/common/os-packages.sh), `download` (the version is itself
 # a pinned download), `includes` (other images it is assembled from, at their
 # latest versions), `tests` (the smoke test suites, default: its name, plus
-# those of everything it includes) and `portability` (the portability bases
-# it can run on, default: all).
+# those of everything it includes), `portability` (the portability bases it
+# can run on, default: all), `without` (tools it leaves out that the images it
+# includes carry), `provider_mirror` (carry the terraform_providers mirror) and
+# `ansible_roles` (install the ansible_roles).
 # Every image is an `AS <name>` stage in images/Containerfile.
 images:
   python:
@@ -276,6 +311,30 @@ images:
     versions:
       - { version: "1", base: python-3.12, latest: true }
       - { version: "1", base: python-3.12, flavour: podman, base_stage: podman, latest: true }
+
+  cicd-helper:
+    description: Ansible with Molecule, pytest and the libre_devops roles, beside the Azure CLI, Terraform with the provider mirror, and PowerShell with Az and Microsoft.Graph
+    contents: "ansible-core {version} on Python {python}, with ansible-lint, yamllint, Molecule, pytest, every libre_devops role and the collections they use; Azure CLI {azure_cli}; Terraform {terraform} by default (tenv {tenv}), TFLint, terraform-docs and Conftest, with azurerm, azapi and msgraph in a local mirror; PowerShell {powershell} with Az {az_powershell}, Microsoft.Graph {microsoft_graph}, Pester {pester} and PSScriptAnalyzer {psscriptanalyzer}; uv {uv}, yq {yq}, just {just}, OpenSSH {openssh}, sshpass, rsync, zip and Requests for python3"
+    # Assembled like toolbox, on the Azure CLI's Python, with Ansible (as in
+    # the ansible image) in place of ldo-cli and LibreDevOpsHelpers, and no
+    # Podman.
+    includes: [azure-cli, terraform, powershell]
+    tools: [uv, openssh, containers-podman, community-general, ansible-posix, theforeman-foreman, yq, just]
+    without: [ldo-cli, libredevopshelpers]
+    # As the ansible image, and: rpm, which theforeman.foreman reads the
+    # headers of the RPMs it uploads with; sshpass, for a first SSH login with
+    # a password (ansible -k); rsync, for ansible.posix.synchronize; zip and
+    # unzip.
+    os_packages: [openssl, zlib, rpm, sshpass, rsync, zip, unzip]
+    provider_mirror: true
+    ansible_roles: true
+    tests: [python, ansible, azure-terraform, cicd-helper]
+    versions:
+      # The version is ansible-core's: 2.21, the last line that runs on Python
+      # 3.12 (the Azure CLI's Python here), and the line the libre_devops roles
+      # test against. Renovate keeps it on 2.21 patch releases.
+      # renovate: datasource=pypi depName=ansible-core
+      - { version: "2.21.6", python: "3.12", base: python-3.12, latest: true, moving: [minor] }
 
   # Self-hosted CI agents. Each registers itself from environment variables
   # when the container starts (see the README), runs one job and exits unless

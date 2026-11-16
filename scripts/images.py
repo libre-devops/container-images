@@ -103,6 +103,8 @@ DOWNLOADS: dict[str, tuple[str, str, str, dict[str, str]]] = {
     "ldo-cli": ("libre-devops/ldo-cli", "v{v}", "libre_devops_helpers-{v}-py3-none-any.whl", {"any": ""}),
     # GitHub publishes no musl build of the runner.
     "github-runner": ("actions/runner", "v{v}", "actions-runner-linux-{a}-{v}.tar.gz", {"amd64": "x64", "arm64": "arm64"}),
+    # Static musl builds, so the same binary serves every base.
+    "just": ("casey/just", "{v}", "just-{v}-{a}.tar.gz", {"amd64": "x86_64-unknown-linux-musl", "arm64": "aarch64-unknown-linux-musl"}),
     # CI only.
     "shfmt": ("mvdan/sh", "v{v}", "shfmt_v{v}_linux_{a}", {"amd64": "amd64", "arm64": "arm64"}),
     "trivy": ("aquasecurity/trivy", "v{v}", "trivy_{v}_Linux-{a}.tar.gz", {"amd64": "64bit", "arm64": "ARM64"}),
@@ -122,7 +124,17 @@ AZURE_PIPELINES_AGENT = {
     "amd64-musl": "linux-musl-x64",
     "arm64-musl": "linux-musl-arm64",
 }
-GALAXY_COLLECTIONS = {"azure-azcollection": "azure.azcollection", "containers-podman": "containers.podman"}
+GALAXY_COLLECTIONS = {
+    "azure-azcollection": "azure.azcollection",
+    "containers-podman": "containers.podman",
+    "community-general": "community.general",
+    "ansible-posix": "ansible.posix",
+    "theforeman-foreman": "theforeman.foreman",
+}
+# A standalone Galaxy role has no artifact of its own: Galaxy points at the
+# role's GitHub repository, and a release is that repository's archive at the
+# release's tag, pinned by its SHA-256 as Galaxy itself would download it.
+GALAXY = "https://galaxy.ansible.com"
 # OpenSSH portable publishes signed tarballs, not checksums: a release is
 # pinned only after its signature verifies against the OpenSSH release key
 # (Damien Miller's), named here by fingerprint.
@@ -183,6 +195,7 @@ GO_BUILDS: dict[str, GoBuild] = {
         {".": "conftest"},
         "-X github.com/open-policy-agent/conftest/internal/version.Version={v}",
     ),
+    "yq": GoBuild("github.com/mikefarah/yq/v4", "v{v}", {".": "yq"}),
 }
 
 DISPLAY = {"shellcheck": "ShellCheck", "shfmt": "shfmt", "jq": "jq"}
@@ -267,6 +280,11 @@ class Config:
         self.terraform_providers: dict[str, list[str]] = {
             source: [str(v) for v in versions] for source, versions in (data.get("terraform_providers") or {}).items()
         }
+        self.ansible_roles: dict[str, str] = {
+            f"{namespace}.{name}": str(version)
+            for namespace, roles in (data.get("ansible_roles") or {}).items()
+            for name, version in roles.items()
+        }
 
     @classmethod
     def load(cls) -> Config:
@@ -335,10 +353,13 @@ class Config:
         return None
 
     def tools_for(self, entry: Entry) -> list[str]:
+        """Every tool an image version carries: its own, and those of every image
+        it is made of, less any its image leaves out (`without`)."""
         tools = list(self.common) + list(self.images[entry.image].get("tools") or [])
         for c in self.components(entry):
             tools += self.images[c.image].get("tools") or []
-        return list(dict.fromkeys(tools))
+        without = set(self.images[entry.image].get("without") or [])
+        return [t for t in dict.fromkeys(tools) if t not in without]
 
     def os_packages(self, entry: Entry) -> list[str]:
         names = list(self.images[entry.image].get("os_packages") or [])
@@ -373,11 +394,32 @@ class Config:
                 locks["AZURE_CLI_LOCK"] = python_lock_spec(
                     "azure-cli", f"azure-cli=={c.version}\n{SYSTEM_CERTS}", c.version, c.python
                 )
-                ldo = self.tools["ldo-cli"]
-                locks["LDO_CLI_LOCK"] = python_lock_spec(
-                    "ldo-cli", f"libre-devops-helpers=={ldo}\n{SYSTEM_CERTS}", ldo, c.python, exclude="libre-devops-helpers"
-                )
-        if entry.image == "ansible":
+                if "ldo-cli" in self.tools_for(entry):
+                    ldo = self.tools["ldo-cli"]
+                    locks["LDO_CLI_LOCK"] = python_lock_spec(
+                        "ldo-cli", f"libre-devops-helpers=={ldo}\n{SYSTEM_CERTS}", ldo, c.python, exclude="libre-devops-helpers"
+                    )
+        if entry.image == "cicd-helper":
+            # The roles' collections that need Python libraries on the controller
+            # bring their requirements.txt; pytest for the roles' unit tests, and
+            # zstandard for zstd-compressed repository metadata before Python 3.14.
+            # The image's version is its ansible-core.
+            collections = [
+                (t, self.tools[t]) for t in self.tools_for(entry) if t in GALAXY_COLLECTIONS and t in COLLECTION_REQUIREMENTS
+            ]
+            notes = "".join(f"\n# and the requirements.txt of {GALAXY_COLLECTIONS[t]}=={v}" for t, v in collections)
+            # Requests for the image's own Python too, for scripts run with python3.
+            locks["SYSTEM_PYTHON_LOCK"] = python_lock_spec(
+                "cicd-helper-python", f"requests\n{SYSTEM_CERTS}", entry.version, self.python_minor(entry)
+            )
+            locks["ANSIBLE_LOCK"] = python_lock_spec(
+                "cicd-helper",
+                f"{ansible_requirement(entry.version)}\npytest\nzstandard{notes}",
+                entry.version,
+                self.python_minor(entry),
+                collections=collections,
+            )
+        elif entry.image == "ansible":
             locks["ANSIBLE_LOCK"] = python_lock_spec("ansible", ansible_requirement(entry.version), entry.version, entry.python)
         elif entry.image == "ansible-azure":
             core = next(c for c in self.components(entry) if c.image == "ansible")
@@ -387,13 +429,17 @@ class Config:
                 f"{ansible_requirement(core.version)}\n# and the requirements.txt of {collection}=={entry.version}",
                 entry.version,
                 self.python_minor(entry),
-                collection=("azure-azcollection", entry.version),
+                collections=[("azure-azcollection", entry.version)],
             )
         return locks
 
     def providers(self, entry: Entry) -> dict[str, list[str]]:
         """The Terraform providers an image version carries in its mirror."""
         return self.terraform_providers if self.images[entry.image].get("provider_mirror") else {}
+
+    def roles(self, entry: Entry) -> dict[str, str]:
+        """The Galaxy roles an image version installs, by name."""
+        return self.ansible_roles if self.images[entry.image].get("ansible_roles") else {}
 
     def tests(self, entry: Entry) -> list[str]:
         suites = list(self.images[entry.image].get("tests") or [entry.image])
@@ -424,6 +470,9 @@ class Config:
 
 
 SYSTEM_CERTS = "pip-system-certs"
+# Collections whose modules import Python libraries on the controller, which
+# their requirements.txt lists. The others need none.
+COLLECTION_REQUIREMENTS = {"azure-azcollection", "theforeman-foreman"}
 
 
 def ansible_requirement(core: str) -> str:
@@ -438,7 +487,12 @@ def ansible_requirement(core: str) -> str:
 
 
 def python_lock_spec(
-    name: str, requirement: str, version: str, python: str, exclude: str = "", collection: tuple[str, str] | None = None
+    name: str,
+    requirement: str,
+    version: str,
+    python: str,
+    exclude: str = "",
+    collections: list[tuple[str, str]] | None = None,
 ) -> dict:
     key = f"{name}-{version}-py{python}"
     return {
@@ -447,7 +501,7 @@ def python_lock_spec(
         "python": python,
         "file": f"{PYTHON_LOCKS}/{key}.txt",
         "exclude": exclude,
-        "collection": collection,
+        "collections": collections or [],
     }
 
 
@@ -516,7 +570,7 @@ def sha256_of_url(url: str) -> str:
 
 def load_lock() -> dict:
     lock = json.loads(LOCK.read_text()) if LOCK.exists() else {}
-    for section in ("tools", "go", "python", "providers"):
+    for section in ("tools", "go", "python", "providers", "roles"):
         lock.setdefault(section, {})
     return lock
 
@@ -569,6 +623,23 @@ def pin_galaxy_collection(tool: str, version: str) -> dict:
     )
     note(f"  {tool} {version}: {meta['artifact']['sha256']}")
     return {"any": {"url": meta["download_url"], "sha256": meta["artifact"]["sha256"]}}
+
+
+def pin_role(name: str, version: str) -> dict:
+    """A release of a standalone Galaxy role: its GitHub repository's archive at
+    the release's tag, which is what ansible-galaxy itself downloads."""
+    namespace, role = name.split(".", 1)
+    found = http_json(f"{GALAXY}/api/v1/roles/?owner__username={namespace}&name={role}")["results"]
+    if not found:
+        raise Failure(f"Galaxy has no role {name}")
+    meta = found[0]
+    releases = {v["name"] for v in meta["summary_fields"]["versions"]}
+    if version not in releases:
+        raise Failure(f"Galaxy lists no release {version} of {name} (it has {', '.join(sorted(releases))})")
+    url = f"https://github.com/{meta['github_user']}/{meta['github_repo']}/archive/refs/tags/{version}.tar.gz"
+    sha = sha256_of_url(url)
+    note(f"  {name} {version}: {sha}")
+    return {"url": url, "sha256": sha}
 
 
 def fetch_bytes(url: str) -> bytes:
@@ -690,6 +761,23 @@ def newest_provider_minors(source: str, count: int) -> list[str]:
             continue
         chosen[(v.major, v.minor)] = v
     return [str(v) for v in chosen.values()]
+
+
+def newest_roles(namespace: str) -> dict[str, str]:
+    """Every role in a Galaxy namespace that has a release, at its newest
+    stable release, by name."""
+    roles: dict[str, str] = {}
+    url = f"{GALAXY}/api/v1/roles/?namespace={namespace}&page_size=100"
+    while url:
+        page = http_json(url)
+        for role in page["results"]:
+            releases = [v["name"] for v in role["summary_fields"]["versions"] if re.fullmatch(r"\d+\.\d+\.\d+", v["name"])]
+            if releases:
+                roles[role["name"]] = max(releases, key=Version)
+        url = urllib.parse.urljoin(GALAXY, page["next"]) if page.get("next") else ""
+    if not roles:
+        raise Failure(f"Galaxy has no released roles in namespace {namespace}")
+    return dict(sorted(roles.items()))
 
 
 def pin_download(tool: str, version: str, token: str | None) -> dict:
@@ -942,8 +1030,8 @@ def compile_python_lock(spec: dict, overrides: dict[str, str], upgrade: list[str
     for name in upgrade:
         command += ["--upgrade-package", name]
     requirement = spec["requirement"] + "\n"
-    if spec.get("collection"):
-        requirement += collection_requirements(*spec["collection"], spec["collection_asset"])
+    for (tool, version), asset in zip(spec["collections"], spec.get("collection_assets", []), strict=True):
+        requirement += collection_requirements(tool, version, asset) + "\n"
     result = subprocess.run(command, input=requirement, text=True, capture_output=True, cwd=ROOT)
     if result.returncode != 0:
         raise Failure(f"uv could not lock {spec['requirement']} for Python {spec['python']}:\n{result.stderr}")
@@ -1003,6 +1091,7 @@ def cmd_lock(cfg: Config, check: bool) -> None:
     go_needed = cfg.all_go_builds()
     py_needed = cfg.all_python_locks()
     providers_needed = {(src, v) for e in cfg.entries() for src, versions in cfg.providers(e).items() for v in versions}
+    roles_needed = {(name, v) for e in cfg.entries() for name, v in cfg.roles(e).items()}
 
     def pinned(tool: str, version: str) -> bool:
         arches = set(OTHER_DOWNLOADS[tool]) if tool in OTHER_DOWNLOADS else set(DOWNLOADS[tool][3])
@@ -1024,6 +1113,8 @@ def cmd_lock(cfg: Config, check: bool) -> None:
             if set(lock["providers"].get(src, {}).get(v, {})) != set(PROVIDER_PLATFORMS)
         ]
         stale += [f"provider {src} {v}" for src, vs in lock["providers"].items() for v in vs if (src, v) not in providers_needed]
+        problems += [f"role not pinned: {n} {v}" for n, v in sorted(roles_needed) if v not in lock["roles"].get(n, {})]
+        stale += [f"role {n} {v}" for n, vs in lock["roles"].items() for v in vs if (n, v) not in roles_needed]
         problems += [f"no longer used: {s}" for s in stale]
         if problems:
             raise Failure(
@@ -1062,6 +1153,14 @@ def cmd_lock(cfg: Config, check: bool) -> None:
             existing = {**fresh, **existing}
         providers.setdefault(src, {})[version] = existing
 
+    roles: dict[str, dict] = {}
+    for name, version in sorted(roles_needed):
+        existing = lock["roles"].get(name, {}).get(version)
+        if not existing:
+            note(f"pinning {name} {version}")
+            existing = pin_role(name, version)
+        roles.setdefault(name, {})[version] = existing
+
     go_version = cfg.tools["go"]
     toolchain_fixes, _ = osv_fixes("Go", [("stdlib", go_version)])
     if toolchain_fixes:
@@ -1074,9 +1173,7 @@ def cmd_lock(cfg: Config, check: bool) -> None:
     python: dict[str, dict] = {}
     for key, spec in sorted(py_needed.items()):
         note(f"locking {key}")
-        if spec.get("collection"):
-            tool, version = spec["collection"]
-            spec["collection_asset"] = tools[tool][version]["any"]
+        spec["collection_assets"] = [tools[tool][version]["any"] for tool, version in spec["collections"]]
         python[key] = lock_python(spec, lock["python"].get(key))
     for key, entry in lock["python"].items():
         if key not in python:
@@ -1092,6 +1189,7 @@ def cmd_lock(cfg: Config, check: bool) -> None:
                 "go": go,
                 "python": python,
                 "providers": providers,
+                "roles": roles,
             },
             indent=2,
             sort_keys=True,
@@ -1200,11 +1298,33 @@ def resolve_digest(ref: str) -> tuple[str, set[str]]:
     return digest, platforms
 
 
+def pin_roles(lines: list[str], cfg: Config) -> list[str]:
+    """Rewrite the ansible_roles section: every role in each namespace listed
+    there, at its newest release. The section holds nothing else, so it is
+    written afresh; the comments above it survive."""
+    start = next((i for i, line in enumerate(lines) if line.rstrip() == "ansible_roles:"), None)
+    if start is None:
+        return lines
+    end = start + 1
+    while end < len(lines) and lines[end].startswith(" "):
+        end += 1
+    block = []
+    for namespace in cfg.data["ansible_roles"]:
+        roles = newest_roles(namespace)
+        for name, version in roles.items():
+            current = cfg.ansible_roles.get(f"{namespace}.{name}")
+            if current != version:
+                note(f"{namespace}.{name}: {version} ({'new' if current is None else f'was {current}'})")
+        block.append(f"  {namespace}:\n")
+        block += [f"    {name}: {version}\n" for name, version in roles.items()]
+    return lines[: start + 1] + block + lines[end:]
+
+
 def cmd_pin(cfg: Config) -> None:
-    """Re-resolve every tag under bases and portability to its digest, and the
-    versions of every provider under terraform_providers, editing versions.yml
-    in place so its comments survive."""
-    lines = VERSIONS.read_text().splitlines(keepends=True)
+    """Re-resolve every tag under bases and portability to its digest, the
+    versions of every provider under terraform_providers, and the roles under
+    ansible_roles, editing versions.yml in place so its comments survive."""
+    lines = pin_roles(VERSIONS.read_text().splitlines(keepends=True), cfg)
     section = None
     published = {e.base_key for e in cfg.entries()}
     for i, line in enumerate(lines):
@@ -1459,9 +1579,9 @@ def cmd_validate(cfg: Config) -> None:
         for key in ("description", "contents", "versions"):
             if key not in spec:
                 problems.append(f"image '{name}' has no {key}")
-        for tool in spec.get("tools") or []:
+        for tool in (spec.get("tools") or []) + (spec.get("without") or []):
             if tool not in cfg.tools:
-                problems.append(f"image '{name}' uses '{tool}', which is not under tools")
+                problems.append(f"image '{name}' names '{tool}', which is not under tools")
         for included in spec.get("includes") or []:
             if included not in cfg.images or cfg.images[included].get("includes"):
                 problems.append(f"image '{name}' includes '{included}', which is not a plain image")
@@ -1565,6 +1685,15 @@ def build_args(cfg: Config, entry: Entry, base: str | None = None) -> dict[str, 
                     raise Failure(f"provider {src} {v} is not pinned; run `just lock`") from None
                 items += [f"{arch}|{src}|{v}|{a['url']}|{a['sha256']}" for arch, a in sorted(assets.items())]
         args["TERRAFORM_PROVIDERS"] = " ".join(items)
+    if roles := cfg.roles(entry):
+        items = []
+        for name, version in sorted(roles.items()):
+            try:
+                asset = lock["roles"][name][version]
+            except KeyError:
+                raise Failure(f"role {name} {version} is not pinned; run `just lock`") from None
+            items.append(f"{name}|{version}|{asset['url']}|{asset['sha256']}")
+        args["ANSIBLE_ROLES"] = " ".join(items)
     return args
 
 
@@ -1583,6 +1712,11 @@ def test_env(cfg: Config, entry: Entry) -> dict[str, str]:
         env["PODMAN_TEST_IMAGE"] = cfg.portability["wolfi"]
     if providers := cfg.providers(entry):
         env["EXPECT_TERRAFORM_PROVIDERS"] = " ".join(f"{src}={','.join(vs)}" for src, vs in providers.items())
+    if entry.image == "cicd-helper":
+        # For the ansible suite: its version is its ansible-core's.
+        env["EXPECT_ANSIBLE"] = entry.version
+    if roles := cfg.roles(entry):
+        env["EXPECT_ANSIBLE_ROLES"] = " ".join(f"{name}={v}" for name, v in sorted(roles.items()))
     return env
 
 

@@ -32,6 +32,7 @@ Docker Hub from the same digest.
 
 - [Overview](#overview)
 - [Quick start](#quick-start)
+- [How it works](#how-it-works)
 - [Using this as a starting point](#using-this-as-a-starting-point)
 - [Images](#images)
 - [Choosing an image](#choosing-an-image)
@@ -52,7 +53,7 @@ Docker Hub from the same digest.
 
 ## Overview
 
-Eleven images, each a thin layer of pinned tools on a hardened base:
+Twelve images, each a thin layer of pinned tools on a hardened base:
 
 - **`python`**: CPython and uv, with one tag for every supported CPython from 3.12 upwards.
 - **`ansible`**: ansible-core, ansible-lint and [Molecule](https://docs.ansible.com/projects/molecule/)
@@ -76,6 +77,11 @@ Eleven images, each a thin layer of pinned tools on a hardened base:
   [LibreDevOpsHelpers](https://github.com/libre-devops/powershell-helpers).
 - **`toolbox`**: Python, the Azure CLI, Terraform and PowerShell in one image, assembled from
   the same build stages.
+- **`cicd-helper`**: Ansible with ansible-lint, Molecule, pytest and every
+  [libre_devops role](https://galaxy.ansible.com/ui/standalone/namespaces/libre_devops/) and
+  the collections they use, beside the Azure CLI, Terraform with `azure-terraform`'s provider
+  mirror, PowerShell with Az and Microsoft.Graph, yq and just. Assembled like `toolbox`,
+  without ldo-cli, LibreDevOpsHelpers or Podman (see [cicd-helper](#cicd-helper)).
 - **`podman`**: Podman set up to run rootless inside a container (Podman in Podman, or in
   Docker or Kubernetes), with a `docker` command that runs it. `ansible`, `azure-cli`,
   `terraform` and `toolbox` also come as `-podman` flavours built on it, for CI jobs that build
@@ -115,6 +121,89 @@ cosign verify ghcr.io/libre-devops/terraform:1 \
   --certificate-identity https://github.com/libre-devops/container-images/.github/workflows/release.yml@refs/heads/main \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
+
+## How it works
+
+Every image, version and base is listed in [`versions.yml`](./versions.yml), and every change to
+it reaches the registries the same way: a pull request that builds, tests and scans every image,
+then a release from `main`. Bots keep the versions and pins current, and a published image is
+rebuilt as soon as a fix for it exists. The numbers match the step key in the full diagram below.
+
+```mermaid
+flowchart TB
+  subgraph upstream["Upstream"]
+    rel["Tool releases<br/>GitHub, PyPI, Galaxy, Terraform registry,<br/>PowerShell Gallery"]
+    dhi["Docker Hardened Images<br/>Debian 13 and Alpine bases"]
+  end
+  subgraph current["Keeping current"]
+    renovate["Renovate<br/>weekly, and at once for security fixes"]
+    pins["Pins workflow, daily<br/>digests, providers and roles;<br/>SHA-256 pins; vulnerable dependencies patched"]
+  end
+  subgraph pr["Pull request: Build workflow"]
+    pull["Pull request"]
+    build["Build every image<br/>natively on amd64 and arm64"]
+    tests{{"Smoke tests"}}
+    scan{{"Trivy scan gate"}}
+    pass{"All pass?"}
+  end
+  subgraph main["Main: Release and Scan workflows"]
+    merge["Merge to main"]
+    release["Release<br/>one digest in both registries"]
+    readme["README digests<br/>pull request"]
+    daily["Scan workflow, daily"]
+  end
+  subgraph registries["Registries"]
+    ghcr["ghcr.io/libre-devops"]
+    hub["docker.io/libredevops"]
+    sig["cosign signature,<br/>SBOM, SLSA provenance"]
+  end
+  subgraph run["Where images run"]
+    ci["CI jobs"]
+    agents["Self-hosted agents"]
+    hosts["Workstations and clusters"]
+  end
+  rel -->|1| renovate
+  dhi -->|2| pins
+  renovate -->|3| pull
+  pins -->|4| pull
+  pull -->|5 every push| build
+  build -->|6| tests
+  tests -->|7| scan
+  scan --> pass
+  pass -->|8 fails| pull
+  pass -->|9 passes| merge
+  merge -->|10| release
+  release -->|11| ghcr
+  release --> hub
+  hub -.->|12| sig
+  release -->|13| readme
+  ghcr -->|14| ci
+  hub --> agents
+  hub --> hosts
+  daily -->|15 a fix exists| release
+  classDef step fill:#ffffff,stroke:#666666,color:#1a1a1a
+  classDef gate fill:#fff2cc,stroke:#d6b656,color:#1a1a1a
+  classDef upstreamNode fill:#f5f5f5,stroke:#666666,color:#1a1a1a
+  classDef registry fill:#dae8fc,stroke:#6c8ebf,color:#1a1a1a
+  classDef yours fill:#d5e8d4,stroke:#82b366,color:#1a1a1a
+  class renovate,pins,pull,build,merge,release,readme,daily,sig step
+  class tests,scan,pass gate
+  class rel,dhi upstreamNode
+  class ghcr,hub registry
+  class ci,agents,hosts yours
+  style upstream fill:#ffffff,stroke:#666666,color:#1a1a1a
+  style current fill:#ffffff,stroke:#b85450,color:#1a1a1a
+  style pr fill:#ffffff,stroke:#b85450,color:#1a1a1a
+  style main fill:#ffffff,stroke:#b85450,color:#1a1a1a
+  style registries fill:#ffffff,stroke:#6c8ebf,color:#1a1a1a
+  style run fill:#ffffff,stroke:#82b366,color:#1a1a1a
+```
+
+The full diagram, with icons and each step explained. Its source is
+[`docs/diagrams/container-deployment.drawio`](./docs/diagrams/container-deployment.drawio): open
+it in [draw.io](https://app.diagrams.net) to edit it.
+
+[![Libre DevOps container images: build, release and refresh flow](./docs/diagrams/container-deployment.svg)](./docs/diagrams/container-deployment.svg)
 
 ## Using this as a starting point
 
@@ -172,6 +261,7 @@ Locally, `just build`, `just test`, `just scan` and `just lint` run the same ste
 | `powershell` | `7.6.10` `7.6` `7` `lts` `latest`<br>`7.6.10-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | PowerShell 7.6.10, Az 16.5.0, Microsoft.Graph 2.41.2, Pester 6.2.0, PSScriptAnalyzer 1.25.0, LibreDevOpsHelpers 3.0.1 | `ghcr.io/libre-devops/powershell:7.6.10`<br>`docker.io/libredevops/powershell:7.6.10` |
 | `toolbox` | `1` `latest`<br>`1-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | Python 3.12 and uv 0.13.7, Azure CLI 2.92.0, ldo-cli 0.8.1, Terraform 1.17.2 by default (tenv 4.15.1), TFLint 0.66.0, terraform-docs 0.24.0, Conftest 0.71.1, PowerShell 7.6.10 with Az 16.5.0, Microsoft.Graph 2.41.2, Pester 6.2.0, PSScriptAnalyzer 1.25.0 and LibreDevOpsHelpers 3.0.1 | `ghcr.io/libre-devops/toolbox:1`<br>`docker.io/libredevops/toolbox:1` |
 | `toolbox` | `1-podman` `podman`<br>`1-podman-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | Python 3.12 and uv 0.13.7, Azure CLI 2.92.0, ldo-cli 0.8.1, Terraform 1.17.2 by default (tenv 4.15.1), TFLint 0.66.0, terraform-docs 0.24.0, Conftest 0.71.1, PowerShell 7.6.10 with Az 16.5.0, Microsoft.Graph 2.41.2, Pester 6.2.0, PSScriptAnalyzer 1.25.0 and LibreDevOpsHelpers 3.0.1 | `ghcr.io/libre-devops/toolbox:1-podman`<br>`docker.io/libredevops/toolbox:1-podman` |
+| `cicd-helper` | `2.21.6` `2.21` `latest`<br>`2.21.6-py3.12-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | ansible-core 2.21.6 on Python 3.12, with ansible-lint, yamllint, Molecule, pytest, every libre_devops role and the collections they use; Azure CLI 2.92.0; Terraform 1.17.2 by default (tenv 4.15.1), TFLint, terraform-docs and Conftest, with azurerm, azapi and msgraph in a local mirror; PowerShell 7.6.10 with Az 16.5.0, Microsoft.Graph 2.41.2, Pester 6.2.0 and PSScriptAnalyzer 1.25.0; uv 0.13.7, yq 4.54.3, just 1.59.0, OpenSSH 10.6p2, sshpass, rsync, zip and Requests for python3 | `ghcr.io/libre-devops/cicd-helper:2.21.6`<br>`docker.io/libredevops/cicd-helper:2.21.6` |
 | `azure-pipelines-agent` | `5.282.0` `5` `latest`<br>`5.282.0-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | Azure Pipelines agent 5.282.0, with git, curl, jq, ShellCheck and shfmt | `ghcr.io/libre-devops/azure-pipelines-agent:5.282.0`<br>`docker.io/libredevops/azure-pipelines-agent:5.282.0` |
 | `azure-pipelines-agent` | `5.282.0-toolbox` `5-toolbox` `toolbox`<br>`5.282.0-toolbox-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | Azure Pipelines agent 5.282.0 with everything in toolbox 1: Azure CLI 2.92.0, Terraform 1.17.2, PowerShell 7.6.10 with Az and Microsoft.Graph, Python 3.12 | `ghcr.io/libre-devops/azure-pipelines-agent:5.282.0-toolbox`<br>`docker.io/libredevops/azure-pipelines-agent:5.282.0-toolbox` |
 | `azure-pipelines-agent` | `5.282.0-toolbox-podman` `5-toolbox-podman` `toolbox-podman`<br>`5.282.0-toolbox-podman-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | Azure Pipelines agent 5.282.0 with everything in toolbox 1 and Podman 5, which jobs can use to build and run images (rootless; see the README for the outer container's flags) | `ghcr.io/libre-devops/azure-pipelines-agent:5.282.0-toolbox-podman`<br>`docker.io/libredevops/azure-pipelines-agent:5.282.0-toolbox-podman` |
@@ -195,6 +285,7 @@ Every image also has bash, git, curl, ca-certificates, ShellCheck 0.11.0, shfmt 
 | Testing Ansible roles and collections with Molecule against containers | `ansible:podman` | Molecule starts the test containers with Podman inside the image; see [Molecule](#molecule) |
 | Building and pushing images in a CI job, without Docker or a privileged container | `podman`, or a `-podman` flavour such as `azure-cli:podman` or `toolbox:podman` | Rootless Podman inside the container; see [Podman in a container](#podman-in-a-container) |
 | Self-hosted Azure Pipelines agents, GitHub Actions runners or GitLab runners | `azure-pipelines-agent`, `github-runner`, `gitlab-runner` | Ephemeral by default; the `toolbox` tags carry every toolbox tool |
+| Running the libre_devops Ansible roles, or Ansible beside Azure, Terraform and PowerShell | `cicd-helper` | The roles and their collections installed, with the Azure CLI, Terraform and its provider mirror, and PowerShell; see [cicd-helper](#cicd-helper) |
 | Several tool families in one job, or an interactive shell | `toolbox` | Everything together; the largest image (the Az PowerShell modules and the Azure CLI dominate its size) |
 | A specific CPython | `python:<major.minor>` | One tag per supported CPython |
 | The smallest Terraform image | `terraform:alpine` | About a third smaller than the Debian image. musl, so not for Azure Pipelines container jobs, which need glibc |
@@ -227,6 +318,7 @@ Every release records its digests in this README and in
 | `azure-terraform` | The current `terraform`, with the newest three minor releases of azurerm, azapi and msgraph |
 | `powershell` | The current PowerShell LTS |
 | `toolbox` | The latest `azure-cli`, `terraform` and `powershell`, with the Azure CLI's Python |
+| `cicd-helper` | ansible-core 2.21 (the last line on the Azure CLI's Python, 3.12), with the latest roles, `azure-cli`, `terraform` and its provider mirror, and `powershell` |
 | `podman` | Podman 5 from the distribution, and `-podman` flavours of the latest `ansible`, `azure-cli`, `terraform` and `toolbox` |
 | `azure-pipelines-agent`, `github-runner`, `gitlab-runner` | The current agent release, on its own, atop `toolbox`, and atop `toolbox` with Podman |
 
@@ -431,6 +523,41 @@ docker run --rm --device /dev/fuse --security-opt label=disable \
   minimal image works with `gather_facts: false` and `ansible.builtin.raw`.
 - **Dependencies.** A scenario's `dependency` step installs its `requirements.yml` from Galaxy
   at run time, so it needs the network. `containers.podman` is already installed.
+
+### cicd-helper
+
+Everything the libre_devops roles need to run, in one image, for a CI job or a workstation:
+
+```sh
+# A playbook that uses the roles, against hosts in an inventory
+docker run --rm --user "$(id -u):0" -v "$PWD:/work" -v "$HOME/.ssh:/home/app/.ssh:ro" \
+  ghcr.io/libre-devops/cicd-helper:latest ansible-playbook -i inventory.ini site.yml
+```
+
+- **The roles:** every role in the `libre_devops` namespace, at its newest release, installed
+  for every user in `/usr/share/ansible/roles`, so a play names them directly
+  (`roles: [libre_devops.mde_linux]`); `ansible-galaxy role list` shows the versions. The daily
+  Pins run picks up a new role or release by itself, and its pull request merges once Build
+  passes. Build checks that every role's `requirements.yml` and dependencies are met, so a role
+  that needs a collection the image lacks stops there, not at run time.
+- **Collections:** community.general (on 11.x, which the roles' `requirements.yml` allows),
+  ansible.posix, containers.podman and theforeman.foreman, with the Python libraries their
+  modules need on the controller, and `rpm` for uploading RPMs to Satellite.
+- **ansible-core 2.21**, not 2.22 as in `ansible`: 2.22 needs Python 3.13, and this image is on
+  the Azure CLI's Python, 3.12. It is also the line the roles test against.
+- **pytest** runs in Ansible's own virtual environment, so unit tests can import Ansible's
+  libraries. Molecule is there for scenarios that test against hosts you already have; with no
+  Podman, use `ansible:podman` for the roles' container scenarios.
+- **JUnit XML** for CI test views: `libre_devops.test_results_report` writes it from the
+  checks roles' results, `pytest --junitxml=report.xml` from tests, and Ansible's own callback
+  from any playbook (`ANSIBLE_CALLBACKS_ENABLED=ansible.builtin.junit`, with
+  `JUNIT_OUTPUT_DIR`). TFLint (`--format junit`) and Pester write it too.
+- **Other tools:** yq, just (which the roles' own CI runs), yamllint, sshpass (a first login
+  with a password, `ansible -k`), rsync (`ansible.posix.synchronize`), zip and unzip, with
+  curl, jq, git and the CA tooling every image has. The image's own `python3` has Requests,
+  for scripts.
+- **Terraform** installs azurerm, azapi and msgraph from the local mirror, as in
+  [azure-terraform](#azure-terraform), and the Azure CLI is there for azurerm to log in with.
 
 ### Rootless Podman
 
@@ -778,14 +905,15 @@ levels reject both, so run them in a namespace labelled `privileged`.
 | --- | --- | --- |
 | `/home/app` | `HOME` for every user the image runs as | `app`, and any uid in group 0 |
 | `/work` | Working directory; mount your project here | `app`, and any uid in group 0 |
-| `/opt/az` | The Azure CLI's virtual environment (`azure-cli`, `toolbox`) | root |
+| `/opt/az` | The Azure CLI's virtual environment (`azure-cli`, `toolbox`, `cicd-helper`) | root |
 | `/opt/ldo-cli` | ldo-cli's virtual environment (`azure-cli`, `toolbox`) | root |
-| `/opt/microsoft/powershell/7` | PowerShell (`powershell`, `toolbox`) | root |
+| `/opt/microsoft/powershell/7` | PowerShell (`powershell`, `toolbox`, `cicd-helper`) | root |
 | `/usr/local/share/powershell/Modules` | Pinned PowerShell modules, for all users | root |
 | `/home/app/.tenv` | tenv's Terraform installs (`TENV_ROOT`) | `app`, and any uid in group 0 |
-| `/opt/ansible` | Ansible's virtual environment (`ansible`, `ansible-azure`) | root |
-| `/usr/local/share/terraform` | The provider mirror and the two CLI configurations (`azure-terraform`) | root |
-| `/usr/share/ansible/collections` | Collections for every user: `containers.podman` (every ansible image), `azure.azcollection` (`ansible-azure`) | root |
+| `/opt/ansible` | Ansible's virtual environment (`ansible`, `ansible-azure`, `cicd-helper`) | root |
+| `/usr/share/ansible/roles` | Galaxy roles for every user (`cicd-helper`) | root |
+| `/usr/local/share/terraform` | The provider mirror and the two CLI configurations (`azure-terraform`, `cicd-helper`) | root |
+| `/usr/share/ansible/collections` | Collections for every user: `containers.podman` (every ansible image), `azure.azcollection` (`ansible-azure`), and the roles' collections (`cicd-helper`) | root |
 | `/opt/azure-pipelines-agent`, `/opt/actions-runner`, `/opt/gitlab-runner` | The agents, their registration and their work (`azure-pipelines-agent`, `github-runner`, `gitlab-runner`) | `app`, and any uid in group 0 |
 
 ### Environment
@@ -798,17 +926,17 @@ Set by the images; override any of them with `-e` or your CI system's environmen
 | `REQUESTS_CA_BUNDLE` | `/etc/ssl/certs/ca-certificates.crt` | all | Python `requests` (and the Azure CLI) use the system trust store |
 | `NODE_EXTRA_CA_CERTS` | `/etc/ssl/certs/ca-certificates.crt` | all | Node.js, which the CI agents run tasks with, trusts the system store too |
 | `UV_NATIVE_TLS` | `true` | all | uv uses the system trust store rather than its own |
-| `LANG` | `C.UTF-8` | `ansible`, `ansible-azure` | ansible-core refuses to run without a UTF-8 locale |
+| `LANG` | `C.UTF-8` | `ansible`, `ansible-azure`, `cicd-helper` | ansible-core refuses to run without a UTF-8 locale |
 | `BUILDAH_ISOLATION` | `chroot` | `podman`, `-podman` flavours | `podman build` isolates `RUN` steps with chroot, which works inside a container |
-| `TF_CLI_CONFIG_FILE` | `/usr/local/share/terraform/airgapped.tfrc` | `azure-terraform` | Mirrored providers install from the mirror; `registry.tfrc` uses the registry for everything |
-| `PYTHONUNBUFFERED` | `1` | `python`, `azure-cli`, `toolbox` | Unbuffered output in CI logs |
-| `AZURE_CORE_COLLECT_TELEMETRY` | `no` | `azure-cli`, `toolbox` | No Azure CLI telemetry |
-| `TENV_ROOT` | `/home/app/.tenv` | `terraform`, `toolbox` | Where tenv keeps Terraform versions |
-| `TENV_AUTO_INSTALL` | `true` | `terraform`, `toolbox` | A `.terraform-version` installs on demand; set `false` offline |
-| `CHECKPOINT_DISABLE` | `1` | `terraform`, `toolbox` | No HashiCorp update checks |
-| `POWERSHELL_TELEMETRY_OPTOUT` | `1` | `powershell`, `toolbox` | No PowerShell telemetry |
-| `POWERSHELL_UPDATECHECK` | `Off` | `powershell`, `toolbox` | No update notices |
-| `DOTNET_CLI_TELEMETRY_OPTOUT`, `DOTNET_NOLOGO` | `1` | `powershell`, `toolbox` | No .NET telemetry or banners |
+| `TF_CLI_CONFIG_FILE` | `/usr/local/share/terraform/airgapped.tfrc` | `azure-terraform`, `cicd-helper` | Mirrored providers install from the mirror; `registry.tfrc` uses the registry for everything |
+| `PYTHONUNBUFFERED` | `1` | `python`, `azure-cli`, `toolbox`, `cicd-helper` | Unbuffered output in CI logs |
+| `AZURE_CORE_COLLECT_TELEMETRY` | `no` | `azure-cli`, `toolbox`, `cicd-helper` | No Azure CLI telemetry |
+| `TENV_ROOT` | `/home/app/.tenv` | `terraform`, `toolbox`, `cicd-helper` | Where tenv keeps Terraform versions |
+| `TENV_AUTO_INSTALL` | `true` | `terraform`, `toolbox`, `cicd-helper` | A `.terraform-version` installs on demand; set `false` offline |
+| `CHECKPOINT_DISABLE` | `1` | `terraform`, `toolbox`, `cicd-helper` | No HashiCorp update checks |
+| `POWERSHELL_TELEMETRY_OPTOUT` | `1` | `powershell`, `toolbox`, `cicd-helper` | No PowerShell telemetry |
+| `POWERSHELL_UPDATECHECK` | `Off` | `powershell`, `toolbox`, `cicd-helper` | No update notices |
+| `DOTNET_CLI_TELEMETRY_OPTOUT`, `DOTNET_NOLOGO` | `1` | `powershell`, `toolbox`, `cicd-helper` | No .NET telemetry or banners |
 
 git trusts every directory (`safe.directory = *` in the system configuration), because CI
 systems mount workspaces owned by other uids.
@@ -1099,6 +1227,7 @@ it. The CI matrix, tags, tests and README follow from `versions.yml`.
 | Hash-locked Python dependencies | `images/locks/` | The Pins workflow, on those branches and every day |
 | Base image digests | `versions.yml` | The Pins workflow, every day, as a pull request that merges itself once Build passes |
 | Terraform providers in `azure-terraform` | `versions.yml` (`terraform_providers`), and their SHA-256 in `versions.lock.json` | The Pins workflow, every day: the newest three minor releases, each pinned once its signed checksums verify |
+| Galaxy roles in `cicd-helper` | `versions.yml` (`ansible_roles`), and the SHA-256 of each release's archive in `versions.lock.json` | The Pins workflow, every day: every role in the namespace, at its newest release |
 | GitHub Actions | the workflows, by commit SHA | Renovate |
 
 A download pin, once written, is never re-fetched: an upstream asset that changes after it was
@@ -1118,6 +1247,7 @@ images/common/          Distribution-neutral build steps shared by every image
 images/<image>/         An image's own install steps
 images/locks/           Generated: hash-locked Python requirements
 vex/                    VEX statements for findings shown not to apply
+docs/diagrams/          The build and release flow, in draw.io with an SVG preview
 examples/kubernetes/    Kubernetes manifests for Podman in a container and the CI agents
 examples/compose/       Docker Compose files: the toolbox as a shell, and the CI agents
 tests/                  Smoke tests, run in every image as the app user

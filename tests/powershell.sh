@@ -12,11 +12,12 @@ function Assert-Version([string] $What, [string] $Got, [string] $Want) {
 }
 Assert-Version "PowerShell" $PSVersionTable.PSVersion.ToString() $env:EXPECT_POWERSHELL
 $modules = [ordered]@{
-    PSScriptAnalyzer   = $env:EXPECT_PSSCRIPTANALYZER
-    Pester             = $env:EXPECT_PESTER
-    LibreDevOpsHelpers = $env:EXPECT_LIBREDEVOPSHELPERS
-    Az                 = $env:EXPECT_AZ_POWERSHELL
+    PSScriptAnalyzer = $env:EXPECT_PSSCRIPTANALYZER
+    Pester           = $env:EXPECT_PESTER
+    Az               = $env:EXPECT_AZ_POWERSHELL
 }
+# Images that do without LibreDevOpsHelpers (cicd-helper) have no version for it.
+if ($env:EXPECT_LIBREDEVOPSHELPERS) { $modules.LibreDevOpsHelpers = $env:EXPECT_LIBREDEVOPSHELPERS }
 foreach ($name in $modules.Keys) {
     Import-Module $name -RequiredVersion $modules[$name]
     $loaded = Get-Module $name

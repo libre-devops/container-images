@@ -27,6 +27,9 @@
 #               podman for the -podman flavours. Each starts as root, since
 #               podman ends as the app user.
 #   toolbox     Everything, assembled from the stages above.
+#   cicd-helper Ansible with the Galaxy roles in versions.yml, the Azure CLI,
+#               Terraform with the provider mirror, and PowerShell, assembled
+#               the same way.
 #   azure-terraform, azure-pipelines-agent, github-runner, gitlab-runner
 #               On the stage named by ATOP: terraform for azure-terraform, and
 #               base, or toolbox for their toolbox flavours, for the CI agents.
@@ -46,6 +49,11 @@ ARG LDO_CLI_ASSET=""
 ARG POWERSHELL_ASSET=""
 ARG AZURE_AZCOLLECTION_ASSET=""
 ARG CONTAINERS_PODMAN_ASSET=""
+ARG COMMUNITY_GENERAL_ASSET=""
+ARG ANSIBLE_POSIX_ASSET=""
+ARG THEFOREMAN_FOREMAN_ASSET=""
+ARG JUST_ASSET=""
+ARG ANSIBLE_ROLES=""
 ARG AZURE_PIPELINES_AGENT_ASSET=""
 ARG GITHUB_RUNNER_ASSET=""
 ARG GITLAB_RUNNER_ASSET=""
@@ -62,6 +70,7 @@ ARG TENV_GO=""
 ARG TFLINT_GO=""
 ARG TERRAFORM_DOCS_GO=""
 ARG CONFTEST_GO=""
+ARG YQ_GO=""
 RUN --mount=type=bind,source=images,target=/src \
     --mount=type=cache,target=/root/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
@@ -139,8 +148,7 @@ COPY --from=openssh /built/ /
 RUN --mount=type=bind,source=images,target=/src \
     --mount=type=bind,from=fetch,source=/fetched,target=/fetched \
     sh /src/common/ensure-python.sh "${PYTHON_MINOR}" /usr/local/bin/uv \
-    && sh /src/ansible/install.sh /usr/local/bin/uv "/src/${ANSIBLE_LOCK}" \
-        /fetched/containers-podman/collections \
+    && sh /src/ansible/install.sh /usr/local/bin/uv "/src/${ANSIBLE_LOCK}" /fetched \
     && sh /src/common/finalise.sh
 # ansible-core refuses to run unless the locale encoding is UTF-8.
 ENV HOME=/home/app \
@@ -160,8 +168,7 @@ COPY --from=openssh /built/ /
 RUN --mount=type=bind,source=images,target=/src \
     --mount=type=bind,from=fetch,source=/fetched,target=/fetched \
     sh /src/common/ensure-python.sh "${PYTHON_MINOR}" /usr/local/bin/uv \
-    && sh /src/ansible/install.sh /usr/local/bin/uv "/src/${ANSIBLE_LOCK}" \
-        /fetched/containers-podman/collections /fetched/azure-azcollection/collections \
+    && sh /src/ansible/install.sh /usr/local/bin/uv "/src/${ANSIBLE_LOCK}" /fetched \
     && sh /src/common/finalise.sh
 ENV HOME=/home/app \
     LANG=C.UTF-8 \
@@ -175,13 +182,14 @@ FROM ${BASE_STAGE} AS azure-cli
 USER 0
 ARG PYTHON_MINOR
 ARG AZURE_CLI_LOCK
-ARG LDO_CLI_LOCK
-# uv builds the image but is not shipped in it.
+ARG LDO_CLI_LOCK=""
+# uv builds the image but is not shipped in it. With no LDO_CLI_LOCK (an image
+# that does without ldo-cli), only the Azure CLI is installed.
 RUN --mount=type=bind,source=images,target=/src \
     --mount=type=bind,from=fetch,source=/fetched,target=/fetched \
     sh /src/common/ensure-python.sh "${PYTHON_MINOR}" /fetched/uv/usr/local/bin/uv \
     && sh /src/azure-cli/install.sh /fetched/uv/usr/local/bin/uv \
-        "/src/${AZURE_CLI_LOCK}" "/src/${LDO_CLI_LOCK}" /fetched/ldo-cli/wheels \
+        "/src/${AZURE_CLI_LOCK}" "${LDO_CLI_LOCK:+/src/${LDO_CLI_LOCK}}" /fetched/ldo-cli/wheels \
     && sh /src/common/finalise.sh
 ENV HOME=/home/app \
     AZURE_CORE_COLLECT_TELEMETRY=no \
@@ -251,6 +259,52 @@ ENV TENV_ROOT=/home/app/.tenv \
     PYTHONUNBUFFERED=1
 RUN --mount=type=bind,source=images,target=/src \
     sh /src/common/ensure-python.sh "${PYTHON_MINOR}" /usr/local/bin/uv \
+    && ln -sf /opt/microsoft/powershell/7/pwsh /usr/local/bin/pwsh \
+    && sh /src/common/finalise.sh
+ENV HOME=/home/app
+USER 10001:10001
+WORKDIR /work
+CMD ["bash"]
+
+# Ansible (its own virtual environment, with the roles in versions.yml and the
+# collections they use) beside the Azure CLI, Terraform with the provider
+# mirror, and PowerShell: for CI jobs that run those roles. Assembled like
+# toolbox, without ldo-cli, LibreDevOpsHelpers or Podman.
+FROM ${BASE_STAGE} AS cicd-helper
+# hadolint ignore=DL3002
+USER 0
+ARG PYTHON_MINOR
+ARG ANSIBLE_LOCK
+ARG SYSTEM_PYTHON_LOCK
+COPY --from=fetch /fetched/uv/ /fetched/just/ /
+COPY --from=openssh /built/ /
+COPY --from=azure-cli /opt/az/ /opt/az/
+COPY --from=azure-cli /usr/local/bin/az /usr/local/bin/
+COPY --from=go /built/tenv/ /built/tflint/ /built/terraform-docs/ /built/conftest/ /built/yq/ /
+COPY --from=terraform /home/app/.tenv/ /home/app/.tenv/
+COPY --from=terraform-providers /mirror/ /usr/local/share/terraform/providers/
+COPY --from=powershell /opt/microsoft/ /opt/microsoft/
+COPY --from=powershell /usr/local/share/powershell/ /usr/local/share/powershell/
+ENV TENV_ROOT=/home/app/.tenv \
+    TENV_AUTO_INSTALL=true \
+    CHECKPOINT_DISABLE=1 \
+    TF_CLI_CONFIG_FILE=/usr/local/share/terraform/airgapped.tfrc \
+    AZURE_CORE_COLLECT_TELEMETRY=no \
+    POWERSHELL_TELEMETRY_OPTOUT=1 \
+    POWERSHELL_UPDATECHECK=Off \
+    DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    DOTNET_NOLOGO=1 \
+    LANG=C.UTF-8 \
+    PYTHONUNBUFFERED=1
+RUN --mount=type=bind,source=images,target=/src \
+    --mount=type=bind,from=fetch,source=/fetched,target=/fetched \
+    sh /src/common/ensure-python.sh "${PYTHON_MINOR}" /usr/local/bin/uv \
+    && UV_NO_CACHE=1 /usr/local/bin/uv pip install --system --break-system-packages \
+        --python "python${PYTHON_MINOR}" --require-hashes --no-deps -r "/src/${SYSTEM_PYTHON_LOCK}" \
+    && sh /src/ansible/install.sh /usr/local/bin/uv "/src/${ANSIBLE_LOCK}" /fetched \
+    && /opt/ansible/bin/ansible-galaxy role install --no-deps \
+        --roles-path /usr/share/ansible/roles -r /fetched/ansible-roles/requirements.yml \
+    && sh /src/terraform/cli-configs.sh /usr/local/share/terraform \
     && ln -sf /opt/microsoft/powershell/7/pwsh /usr/local/bin/pwsh \
     && sh /src/common/finalise.sh
 ENV HOME=/home/app

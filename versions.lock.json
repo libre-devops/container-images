@@ -56,6 +56,12 @@
           "golang.org/x/crypto": "v0.59.0"
         }
       }
+    },
+    "yq": {
+      "4.54.3": {
+        "module": "github.com/mikefarah/yq/v4",
+        "overrides": {}
+      }
     }
   },
   "providers": {
@@ -191,11 +197,97 @@
       "python": "3.12",
       "requirement": "azure-cli==2.92.0\npip-system-certs"
     },
+    "cicd-helper-2.21.6-py3.12": {
+      "file": "images/locks/cicd-helper-2.21.6-py3.12.txt",
+      "overrides": {},
+      "python": "3.12",
+      "requirement": "ansible-core==2.21.6\nansible-lint\nmolecule\nmolecule-plugins\njmespath\nnetaddr\npywinrm\npip-system-certs\npytest\nzstandard\n# and the requirements.txt of theforeman.foreman==6.0.0"
+    },
+    "cicd-helper-python-2.21.6-py3.12": {
+      "file": "images/locks/cicd-helper-python-2.21.6-py3.12.txt",
+      "overrides": {},
+      "python": "3.12",
+      "requirement": "requests\npip-system-certs"
+    },
     "ldo-cli-0.8.1-py3.12": {
       "file": "images/locks/ldo-cli-0.8.1-py3.12.txt",
       "overrides": {},
       "python": "3.12",
       "requirement": "libre-devops-helpers==0.8.1\npip-system-certs"
+    }
+  },
+  "roles": {
+    "libre_devops.aria_automation_deployment": {
+      "1.0.0": {
+        "sha256": "ef8826426c28a8d6aeb20fa16747b4a6c83234f7d352578fa1f3b0ed24235493",
+        "url": "https://github.com/libre-devops/ansible-role-aria-automation-deployment/archive/refs/tags/1.0.0.tar.gz"
+      }
+    },
+    "libre_devops.azure_arc": {
+      "1.0.0": {
+        "sha256": "d9e9e8455c1fbcd33326907055b7d66baa2e048de4a43f4c8bbcbfae304a0dcd",
+        "url": "https://github.com/libre-devops/ansible-role-azure-arc/archive/refs/tags/1.0.0.tar.gz"
+      }
+    },
+    "libre_devops.entra_device_groups": {
+      "1.0.0": {
+        "sha256": "2dea21e8d5756fa94587c2f0369604e39e142d4ad32a8016dcd2fe35af2405d9",
+        "url": "https://github.com/libre-devops/ansible-role-entra-device-groups/archive/refs/tags/1.0.0.tar.gz"
+      }
+    },
+    "libre_devops.mde_linux": {
+      "1.1.1": {
+        "sha256": "22be738c75d920e7fa27794bf74b8225ddc8ad81f7fe07c11426cbde1fb8de4c",
+        "url": "https://github.com/libre-devops/ansible-role-mde-linux/archive/refs/tags/1.1.1.tar.gz"
+      }
+    },
+    "libre_devops.mde_linux_checks": {
+      "1.0.1": {
+        "sha256": "65449d78566526102e22662f742909e55647c8617a3c2e5bb3e6477ac14763c0",
+        "url": "https://github.com/libre-devops/ansible-role-mde-linux-checks/archive/refs/tags/1.0.1.tar.gz"
+      }
+    },
+    "libre_devops.puppet_agent": {
+      "1.0.0": {
+        "sha256": "c99bc448314a03abb1241c0817cdc772abb112670494bde1d6a1823ee94112a9",
+        "url": "https://github.com/libre-devops/ansible-role-puppet-agent/archive/refs/tags/1.0.0.tar.gz"
+      }
+    },
+    "libre_devops.python": {
+      "1.0.0": {
+        "sha256": "2498ec1d9321b8e1218f0860a5526df88eea9b4d28c2f45f8abc8ffe92d412ff",
+        "url": "https://github.com/libre-devops/ansible-role-python/archive/refs/tags/1.0.0.tar.gz"
+      }
+    },
+    "libre_devops.rpm_repo_download": {
+      "1.0.0": {
+        "sha256": "1f8c5eda028ce372f8f106be599bf33213e53ba10532ab453f1f1b51dbebc487",
+        "url": "https://github.com/libre-devops/ansible-role-rpm-repo-download/archive/refs/tags/1.0.0.tar.gz"
+      }
+    },
+    "libre_devops.satellite_content_upload": {
+      "1.0.0": {
+        "sha256": "a82aa101fa1956b8d2a6f4227ce2b219e5fdbc957092608a0c2d32a1f7f2dd21",
+        "url": "https://github.com/libre-devops/ansible-role-satellite-content-upload/archive/refs/tags/1.0.0.tar.gz"
+      }
+    },
+    "libre_devops.ssh_bootstrap": {
+      "1.0.0": {
+        "sha256": "aab9249dc5b766c3d44c244528e496cc2281ba5cf79e3c262b4ede776e382560",
+        "url": "https://github.com/libre-devops/ansible-role-ssh-bootstrap/archive/refs/tags/1.0.0.tar.gz"
+      }
+    },
+    "libre_devops.standalone_package_installer": {
+      "1.0.0": {
+        "sha256": "facec6c2762faf4d5875c16afae4839c1f91a1072b6e3d6549dad99c991ecdeb",
+        "url": "https://github.com/libre-devops/ansible-role-standalone-package-installer/archive/refs/tags/1.0.0.tar.gz"
+      }
+    },
+    "libre_devops.test_results_report": {
+      "1.0.0": {
+        "sha256": "74c966b1af36a9bec59b61a7eac4e517417d0e25056c5232e97fd85d350fb89b",
+        "url": "https://github.com/libre-devops/ansible-role-test-results-report/archive/refs/tags/1.0.0.tar.gz"
+      }
     }
   },
   "tools": {
@@ -208,6 +300,14 @@
         "arm64": {
           "sha256": "325e971b6ba9bfa504672e29be93c24981eeb1c07576d730e9f7c8805afff0c6",
           "url": "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_arm64.tar.gz"
+        }
+      }
+    },
+    "ansible-posix": {
+      "2.2.2": {
+        "any": {
+          "sha256": "00a58c5d804c9adc99c3c3dc1b9f2246f4bb5f7337941440e0956f0e31c3b82b",
+          "url": "https://galaxy.ansible.com/api/v3/plugin/ansible/content/published/collections/artifacts/ansible-posix-2.2.2.tar.gz"
         }
       }
     },
@@ -236,6 +336,14 @@
         "arm64-musl": {
           "sha256": "302f3ed83a189f6e0d6fe41a1d98d09a51c942cebb18d15ac7f7d7952055668c",
           "url": "https://download.agent.dev.azure.com/agent/5.282.0/vsts-agent-linux-musl-arm64-5.282.0.tar.gz"
+        }
+      }
+    },
+    "community-general": {
+      "11.4.10": {
+        "any": {
+          "sha256": "62760f5ec2f788ff4dcbecc5b77de2606132cf233e9fa564c9f2cb91db6ac955",
+          "url": "https://galaxy.ansible.com/api/v3/plugin/ansible/content/published/collections/artifacts/community-general-11.4.10.tar.gz"
         }
       }
     },
@@ -319,6 +427,18 @@
         }
       }
     },
+    "just": {
+      "1.59.0": {
+        "amd64": {
+          "sha256": "409044617b6f06517c1035e55ca38c8c856ff8b650e41bc2aa1ef82d5903a23e",
+          "url": "https://github.com/casey/just/releases/download/1.59.0/just-1.59.0-x86_64-unknown-linux-musl.tar.gz"
+        },
+        "arm64": {
+          "sha256": "23871b1702bfd550fb5f901778fd4290ecf2ee034a45a889fbe96d89b188086d",
+          "url": "https://github.com/casey/just/releases/download/1.59.0/just-1.59.0-aarch64-unknown-linux-musl.tar.gz"
+        }
+      }
+    },
     "ldo-cli": {
       "0.8.1": {
         "any": {
@@ -372,6 +492,14 @@
         "arm64": {
           "sha256": "5f2db09dae91fca848f7adbdd014632e921a383863a2ad7e0450ad3aba0c6489",
           "url": "https://github.com/mvdan/sh/releases/download/v3.14.1/shfmt_v3.14.1_linux_arm64"
+        }
+      }
+    },
+    "theforeman-foreman": {
+      "6.0.0": {
+        "any": {
+          "sha256": "5e28b3c5a8a6ce4c1922b729846539598585e13c8d7e629f568d26720e08480f",
+          "url": "https://galaxy.ansible.com/api/v3/plugin/ansible/content/published/collections/artifacts/theforeman-foreman-6.0.0.tar.gz"
         }
       }
     },
