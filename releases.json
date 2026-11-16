@@ -1,172 +1,172 @@
 {
   "ansible": {
     "2.16.20": {
-      "date_tag": "2.16.20-py3.12-20261116.2",
-      "digest": "sha256:b04e46ab4644221006ea92c2a5413d9b45286dd72bb1cf128d4422b99411fc2a",
+      "date_tag": "2.16.20-py3.12-20261116.3",
+      "digest": "sha256:551cf709054fee0422a149d75d974346c234c7d3a395a2c2600f2344beb1eda5",
       "released": "2026-11-16"
     },
     "2.22.0": {
-      "date_tag": "2.22.0-py3.14-20261116.2",
-      "digest": "sha256:73e22c7905ac3f0cde32638093bbfb44bcf2bc3e68c0ea26ce8636fb64c9570c",
+      "date_tag": "2.22.0-py3.14-20261116.3",
+      "digest": "sha256:b9704a05814afbe8b143459db0c3135003c0ed5dddfc4b795365229f064f548a",
       "released": "2026-11-16"
     },
     "2.22.0-podman": {
-      "date_tag": "2.22.0-py3.14-podman-20261116.2",
-      "digest": "sha256:d3f0c894a97cefd7390f42f92f8d68a387feb23c0b475949ef1436ff5848abf8",
+      "date_tag": "2.22.0-py3.14-podman-20261116.3",
+      "digest": "sha256:ab6793d7f869679b34a23e27d795677035eea9ebf8849e2965dc3ac45728d564",
       "released": "2026-11-16"
     }
   },
   "ansible-azure": {
     "4.2.0": {
-      "date_tag": "4.2.0-20261116.2",
-      "digest": "sha256:d9fae5f81b3518862bf524f1ceb2f223cd6ba1ec26b568188f1ac212b0b918f8",
+      "date_tag": "4.2.0-20261116.3",
+      "digest": "sha256:35980c795b4db58a04c54e7b10d3a2757da230cffc4c5e3bd9d443e82ff0d143",
       "released": "2026-11-16"
     }
   },
   "azure-cli": {
     "2.72.0": {
-      "date_tag": "2.72.0-py3.12-20261116.2",
-      "digest": "sha256:b8c7c96cf129cd889926e7fb3b5cd7128c265161ddce59079a26d820b562a35e",
+      "date_tag": "2.72.0-py3.12-20261116.3",
+      "digest": "sha256:6cd9a474d385d37947510898db373866396289f7864d26288517b8a07cbca156",
       "released": "2026-11-16"
     },
     "2.92.0": {
-      "date_tag": "2.92.0-py3.12-20261116.2",
-      "digest": "sha256:78d295b0a386a7082e7e889de34c230f1fcee6d012ad8e2f6468d577c0ab7c74",
+      "date_tag": "2.92.0-py3.12-20261116.3",
+      "digest": "sha256:ff2030aa3ffea2ead1dcc138b43e7711ee694cfa6a59d71c1b614c9d39b3cd50",
       "released": "2026-11-16"
     },
     "2.92.0-podman": {
-      "date_tag": "2.92.0-py3.12-podman-20261116.2",
-      "digest": "sha256:e9b93cac6deab497a41609b81f0fe3e8b4c758dd70aa2d37739e240e690b2fd1",
+      "date_tag": "2.92.0-py3.12-podman-20261116.3",
+      "digest": "sha256:6d5f60081d7f4f7591e85f0a8c646c14c721d91723e0a23f3716ed71789c0cc0",
       "released": "2026-11-16"
     }
   },
   "azure-pipelines-agent": {
     "5.282.0": {
-      "date_tag": "5.282.0-20261116.2",
-      "digest": "sha256:b1db469cc8c713754c1c4eb76e419d452b68f08b3094a407fdececaface6f89b",
+      "date_tag": "5.282.0-20261116.3",
+      "digest": "sha256:39a78005ced49b225939f2812bc3ebd1bc6579c133b0ed1b9291b996b1fa5786",
       "released": "2026-11-16"
     },
     "5.282.0-toolbox": {
-      "date_tag": "5.282.0-toolbox-20261116.2",
-      "digest": "sha256:30dc241c6f033faf99f15a904c20a45edeec7bfa06d6b0ca7b2b802834115678",
+      "date_tag": "5.282.0-toolbox-20261116.3",
+      "digest": "sha256:ec77e52335696f8a59c1d65c9e7edc45dc7f2981e06c2a19f2010805d6df353a",
       "released": "2026-11-16"
     },
     "5.282.0-toolbox-podman": {
-      "date_tag": "5.282.0-toolbox-podman-20261116.2",
-      "digest": "sha256:27c055d8c7026234280357fa124ee7f8abdda89fe581b99bf3d50e62cb7afacb",
+      "date_tag": "5.282.0-toolbox-podman-20261116.3",
+      "digest": "sha256:de547664f997513bb4b38946cb927051cb9c22c1cbe686e8cc7e53814f3c152a",
       "released": "2026-11-16"
     }
   },
   "azure-terraform": {
     "1.17.2": {
-      "date_tag": "1.17.2-20261116.2",
-      "digest": "sha256:f537be4e4f7f081253b22e18a9e43e830272b0a92ad27a87dcb35cabb22252fc",
+      "date_tag": "1.17.2-20261116.3",
+      "digest": "sha256:7b1fa6deae7e943e38c5660e6373780ea635b4b94c59afc77b5c0de7fc441cf6",
       "released": "2026-11-16"
     }
   },
   "cicd-helper": {
     "2.21.6": {
-      "date_tag": "2.21.6-py3.12-20261116",
-      "digest": "sha256:d8b448fd31df504d8eb41a26a9ab84368d633fe1f987c4018f3d16d9cb71d820",
+      "date_tag": "2.21.6-py3.12-20261116.2",
+      "digest": "sha256:ba29cd6d15ebdc29e6e8d373b7b14f8a5daba9b5000e24d662894268d8712268",
       "released": "2026-11-16"
     }
   },
   "github-runner": {
     "2.338.2": {
-      "date_tag": "2.338.2-20261116.2",
-      "digest": "sha256:28396379144021d9b0cbeea5fe01535023a15e9ce43d6af8aad419081852603c",
+      "date_tag": "2.338.2-20261116.3",
+      "digest": "sha256:93660cb5a31bb8d613cb78598b193481a808e545c2dfc5905f495fc26228bc3e",
       "released": "2026-11-16"
     },
     "2.338.2-toolbox": {
-      "date_tag": "2.338.2-toolbox-20261116.2",
-      "digest": "sha256:9cbc99447ec2cf2973d55bf7fd5efa0f0ab5eff60729fdafe9f9b170e306e0f5",
+      "date_tag": "2.338.2-toolbox-20261116.3",
+      "digest": "sha256:91d87444d2c7f35d70487f5204ffe2490e304d07fcbc3d92a25ea3469d150df1",
       "released": "2026-11-16"
     },
     "2.338.2-toolbox-podman": {
-      "date_tag": "2.338.2-toolbox-podman-20261116.2",
-      "digest": "sha256:8a01ebc3cd83483bdb8662cd7200836a8e736287077234b437aac598cc867073",
+      "date_tag": "2.338.2-toolbox-podman-20261116.3",
+      "digest": "sha256:f441ab4f597480cc553bf4460c9ec86cbc2b0805dd1d41af87f60a4b02eb6d13",
       "released": "2026-11-16"
     }
   },
   "gitlab-runner": {
     "19.5.3": {
-      "date_tag": "19.5.3-20261116.2",
-      "digest": "sha256:643e6f4fe31c8b49ff56cedf4f1cc09b81fd6483ac17530676f9fb72551b1793",
+      "date_tag": "19.5.3-20261116.3",
+      "digest": "sha256:e7b4c8b65001c64ece6bceee6f694e15e1b7e1ba0bdfb73e3c85c3c9919e9718",
       "released": "2026-11-16"
     },
     "19.5.3-toolbox": {
-      "date_tag": "19.5.3-toolbox-20261116.2",
-      "digest": "sha256:3aaefbd1707cbba7a230a586312782dccd8bc29d834979bfb778986ca9bbfa81",
+      "date_tag": "19.5.3-toolbox-20261116.3",
+      "digest": "sha256:628fb0075da47c1c794000b83dbb5e76f8f02a72d94068f0382821b33dae1dc5",
       "released": "2026-11-16"
     },
     "19.5.3-toolbox-podman": {
-      "date_tag": "19.5.3-toolbox-podman-20261116.2",
-      "digest": "sha256:0ec228f19ade83924ef3e03a03285fd5e0261782cb9fa4871832f97ee0fb26b4",
+      "date_tag": "19.5.3-toolbox-podman-20261116.3",
+      "digest": "sha256:d231068a730e9254e6e3b3bc7650f123bcffc794657e47c69593990f8741d11b",
       "released": "2026-11-16"
     }
   },
   "podman": {
     "5": {
-      "date_tag": "5-20261116.2",
-      "digest": "sha256:c7e5c12314d2c18f9db3ba40c4796bc2d2b3187c545d13140eff2733738d3e12",
+      "date_tag": "5-20261116.3",
+      "digest": "sha256:3e55773894453316014fdd95143d5107c914aaaf6ef758c45c9369de1c9b4913",
       "released": "2026-11-16"
     }
   },
   "powershell": {
     "7.6.10": {
-      "date_tag": "7.6.10-20261116.2",
-      "digest": "sha256:f9febdcb794f313fa3e1ff23eb3c92a9d4706cb48d5fea49e24d42c095a46398",
+      "date_tag": "7.6.10-20261116.3",
+      "digest": "sha256:f78d22cc990fb6fe7b77ba22f6a4c8bf4a7d42d23225a190f470f7e6a18a6246",
       "released": "2026-11-16"
     }
   },
   "python": {
     "3.12": {
-      "date_tag": "3.12-20261116.2",
-      "digest": "sha256:f5423b739f8052c3cb66dce05487b468d66fc052caff2fe3f03caef7ae0110ce",
+      "date_tag": "3.12-20261116.3",
+      "digest": "sha256:a6d99e7e6328726e38ee1bca0b63556bdf69e1e41984cb3f1733287711cfe204",
       "released": "2026-11-16"
     },
     "3.13": {
-      "date_tag": "3.13-20261116.2",
-      "digest": "sha256:5674295603e1e4d2668a22bc2ab6554ebd6053912071ffee8262d54223247275",
+      "date_tag": "3.13-20261116.3",
+      "digest": "sha256:a09eb8ba6102daa58230f4ad90f36037320754f165cc95493c4fc2f0baa2e463",
       "released": "2026-11-16"
     },
     "3.14": {
-      "date_tag": "3.14-20261116.2",
-      "digest": "sha256:c367d003535a6c87fd70f0eca84807bec37dece504e53d2c9553b8a34d7bb445",
+      "date_tag": "3.14-20261116.3",
+      "digest": "sha256:b12762ec5204f42e07396086064204efd16fc5583b90c57acc93dda0d82da411",
       "released": "2026-11-16"
     },
     "3.15": {
-      "date_tag": "3.15-20261116.2",
-      "digest": "sha256:7bee12113655deed2d19f0ba48d4a65d3589c535d4a0a9b59739dc9c79b90f26",
+      "date_tag": "3.15-20261116.3",
+      "digest": "sha256:005e5cff1f9e0bd61c09cfdbdba1d60fbf2e551a713f423075042c60cd656a05",
       "released": "2026-11-16"
     }
   },
   "terraform": {
     "1.17.2": {
-      "date_tag": "1.17.2-20261116.2",
-      "digest": "sha256:f0205bfe081b9604f1c0dee2d93813fe592f1cb753880afa69a29772bac3dd71",
+      "date_tag": "1.17.2-20261116.3",
+      "digest": "sha256:8301e1f1eb6835703ad70cba8089786d912d66a0379a3e924b67c54a563b81fe",
       "released": "2026-11-16"
     },
     "1.17.2-alpine": {
-      "date_tag": "1.17.2-alpine-20261116.2",
-      "digest": "sha256:b6a01532ec907c5f1905793fd8bd908c9546ef81c4e3451a7af3b942a775a888",
+      "date_tag": "1.17.2-alpine-20261116.3",
+      "digest": "sha256:734d6a50421d01fedd2eb58081c3ef0aa5eb933691700b614b3ec555f5535ad7",
       "released": "2026-11-16"
     },
     "1.17.2-podman": {
-      "date_tag": "1.17.2-podman-20261116.2",
-      "digest": "sha256:4b789ada2b09330c3663703fd5b6b7d820ce513fcb3f50caa6a3e1fd25f53148",
+      "date_tag": "1.17.2-podman-20261116.3",
+      "digest": "sha256:b3b684523ead969e9253f11df2b60eb4b82bc1ae7945cf81dc78078fcd0c2fc5",
       "released": "2026-11-16"
     }
   },
   "toolbox": {
     "1": {
-      "date_tag": "1-20261116.2",
-      "digest": "sha256:4e3e1e913c4f61673e3f5ee25a71451c7976a3548c9aa607b546c8bcf339443a",
+      "date_tag": "1-20261116.3",
+      "digest": "sha256:518cc38c6b90374479662b9e3a7203c7ea842a56ee590d7384a5ec6de9566e64",
       "released": "2026-11-16"
     },
     "1-podman": {
-      "date_tag": "1-podman-20261116.2",
-      "digest": "sha256:2464128c3e09fab3db95c1ad2a1cafab85f536884f4e84ebb66b2d3c8203897e",
+      "date_tag": "1-podman-20261116.3",
+      "digest": "sha256:47ea8495c9d2f1469c4bcd360339cba91c40aef2e53ef11187a3171faa8cb37b",
       "released": "2026-11-16"
     }
   }
