@@ -17,10 +17,10 @@ got=$(/opt/ansible/bin/python -c 'import sys; print("%d.%d" % sys.version_info[:
 [ "$got" = "$EXPECT_PYTHON" ] || fail "Ansible runs on CPython $got, want $EXPECT_PYTHON"
 ok "Ansible runs on CPython $EXPECT_PYTHON"
 
-for command in ansible ansible-playbook ansible-galaxy ansible-doc ansible-vault ansible-inventory ansible-config ansible-lint ssh; do
+for command in ansible ansible-playbook ansible-galaxy ansible-doc ansible-vault ansible-inventory ansible-config ansible-lint molecule ssh; do
 	command -v "$command" >/dev/null || fail "$command is not on PATH"
 done
-ok "the ansible commands, ansible-lint and ssh are on PATH"
+ok "the ansible commands, ansible-lint, molecule and ssh are on PATH"
 
 version=$(ssh -V 2>&1)
 grep -q "^OpenSSH_${EXPECT_OPENSSH}," <<<"$version" || fail "ssh is $version, want OpenSSH $EXPECT_OPENSSH"
@@ -55,3 +55,67 @@ ok "a playbook runs against localhost"
 ansible-lint --offline --version
 ansible-lint --offline site.yml
 ok "ansible-lint runs offline"
+
+got=$(ansible-galaxy collection list containers.podman --format json |
+	jq -r '[.[] | ."containers.podman".version] | first')
+[ "$got" = "$EXPECT_CONTAINERS_PODMAN" ] || fail "containers.podman is $got, want $EXPECT_CONTAINERS_PODMAN"
+ok "containers.podman $EXPECT_CONTAINERS_PODMAN"
+
+molecule --version
+drivers=$(molecule drivers)
+for driver in default podman; do
+	grep -qw "$driver" <<<"$drivers" || fail "molecule has no $driver driver: $drivers"
+done
+ok "molecule has its default driver and molecule-plugins' podman driver"
+
+# An ansible-native scenario (Molecule's own layout) against localhost, with
+# no network: converge, idempotence and verify.
+mkdir -p molecule/default/inventory
+cat >molecule/default/molecule.yml <<'YAML'
+---
+ansible:
+  executor:
+    args:
+      ansible_playbook:
+        - --inventory=${MOLECULE_SCENARIO_DIRECTORY}/inventory/
+scenario:
+  test_sequence: [converge, idempotence, verify]
+YAML
+cat >molecule/default/inventory/hosts.yml <<'YAML'
+---
+all:
+  children:
+    molecule:
+      hosts:
+        instance:
+          ansible_connection: local
+          ansible_python_interpreter: "{{ ansible_playbook_python }}"
+YAML
+cat >molecule/default/converge.yml <<'YAML'
+---
+- name: Converge
+  hosts: molecule
+  gather_facts: false
+  tasks:
+    - name: Write a file
+      ansible.builtin.copy:
+        content: "converged\n"
+        dest: "{{ playbook_dir }}/converged.txt"
+        mode: "0644"
+YAML
+cat >molecule/default/verify.yml <<'YAML'
+---
+- name: Verify
+  hosts: molecule
+  gather_facts: false
+  tasks:
+    - name: Read the file
+      ansible.builtin.slurp:
+        src: "{{ playbook_dir }}/converged.txt"
+      register: converged
+    - name: Check it
+      ansible.builtin.assert:
+        that: (converged.content | b64decode) == "converged\n"
+YAML
+molecule test || fail "molecule test failed against localhost"
+ok "molecule test runs a scenario against localhost"

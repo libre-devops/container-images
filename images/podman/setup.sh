@@ -13,7 +13,9 @@
 # - Containers that share the outer container's namespaces and need no
 #   cgroups (containers.conf), and builds that isolate RUN steps with chroot
 #   (BUILDAH_ISOLATION in the Containerfile), since a nested container cannot
-#   create most namespaces of its own.
+#   create most namespaces of its own. The exception is the UTS namespace,
+#   which Podman can create, so that a container can have its own hostname:
+#   Molecule names each of its test containers that way.
 # - A docker command that runs Podman, without its notice on every call.
 #
 # The outer container needs /dev/fuse (--device /dev/fuse), for
@@ -46,12 +48,13 @@ done
 mkdir -p /etc/containers
 cat >/etc/containers/containers.conf <<'CONF'
 # Podman in a container: nested containers share the outer container's
-# namespaces and need no cgroups of their own (see images/podman/setup.sh).
+# namespaces, apart from a UTS namespace for their own hostname, and need no
+# cgroups of their own (see images/podman/setup.sh).
 [containers]
 netns = "host"
 userns = "host"
 ipcns = "host"
-utsns = "host"
+utsns = "private"
 cgroupns = "host"
 cgroups = "disabled"
 log_driver = "k8s-file"

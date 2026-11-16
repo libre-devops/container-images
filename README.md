@@ -55,10 +55,11 @@ Docker Hub from the same digest.
 Eleven images, each a thin layer of pinned tools on a hardened base:
 
 - **`python`**: CPython and uv, with one tag for every supported CPython from 3.12 upwards.
-- **`ansible`**: ansible-core and ansible-lint in their own virtual environment, with
-  jmespath, netaddr, pywinrm, OpenSSH (built from its latest release: see
-  [Built from source](#built-from-source)) and uv. The current release, plus 2.16 for
-  managing hosts whose only Python is 3.6 (see [Ansible](#ansible)).
+- **`ansible`**: ansible-core, ansible-lint and [Molecule](https://docs.ansible.com/projects/molecule/)
+  in their own virtual environment, with the containers.podman collection, jmespath, netaddr,
+  pywinrm, OpenSSH (built from its latest release: see [Built from source](#built-from-source))
+  and uv. The current release, plus 2.16 for managing hosts whose only Python is 3.6, and a
+  `podman` flavour for Molecule scenarios that test against containers (see [Ansible](#ansible)).
 - **`ansible-azure`**: the `ansible` image with the
   [azure.azcollection](https://galaxy.ansible.com/ui/repo/published/azure/azcollection/)
   collection and every Python library its modules need.
@@ -76,9 +77,9 @@ Eleven images, each a thin layer of pinned tools on a hardened base:
 - **`toolbox`**: Python, the Azure CLI, Terraform and PowerShell in one image, assembled from
   the same build stages.
 - **`podman`**: Podman set up to run rootless inside a container (Podman in Podman, or in
-  Docker or Kubernetes), with a `docker` command that runs it. `azure-cli`, `terraform` and
-  `toolbox` also come as `-podman` flavours built on it, for CI jobs that build and push images
-  (see [Podman in a container](#podman-in-a-container)).
+  Docker or Kubernetes), with a `docker` command that runs it. `ansible`, `azure-cli`,
+  `terraform` and `toolbox` also come as `-podman` flavours built on it, for CI jobs that build
+  and push images or test against containers (see [Podman in a container](#podman-in-a-container)).
 - **`azure-pipelines-agent`**, **`github-runner`** and **`gitlab-runner`**: self-hosted CI
   agents that set themselves up from environment variables and run one job per container.
   Each also comes as a `toolbox` flavour with every toolbox tool in it, and a `toolbox-podman`
@@ -163,9 +164,10 @@ Locally, `just build`, `just test`, `just scan` and `just lint` run the same ste
 | `terraform` | `1.17.2` `1.17` `1` `latest`<br>`1.17.2-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | Terraform 1.17.2 by default (tenv 4.15.1; a repository's .terraform-version wins), TFLint 0.66.0, terraform-docs 0.24.0, Conftest 0.71.1 | `ghcr.io/libre-devops/terraform:1.17.2`<br>`docker.io/libredevops/terraform:1.17.2` |
 | `terraform` | `1.17.2-alpine` `1.17-alpine` `1-alpine` `alpine`<br>`1.17.2-alpine-YYYYMMDD` | `dhi.io/alpine-base:3.24-alpine3.24-dev` | Terraform 1.17.2 by default (tenv 4.15.1; a repository's .terraform-version wins), TFLint 0.66.0, terraform-docs 0.24.0, Conftest 0.71.1 | `ghcr.io/libre-devops/terraform:1.17.2-alpine`<br>`docker.io/libredevops/terraform:1.17.2-alpine` |
 | `terraform` | `1.17.2-podman` `1.17-podman` `1-podman` `podman`<br>`1.17.2-podman-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | Terraform 1.17.2 by default (tenv 4.15.1; a repository's .terraform-version wins), TFLint 0.66.0, terraform-docs 0.24.0, Conftest 0.71.1 | `ghcr.io/libre-devops/terraform:1.17.2-podman`<br>`docker.io/libredevops/terraform:1.17.2-podman` |
-| `ansible` | `2.22.0` `2.22` `latest`<br>`2.22.0-py3.14-YYYYMMDD` | `dhi.io/python:3.14-debian13-dev` | ansible-core 2.22.0 on Python 3.14, with ansible-lint, jmespath, netaddr, pywinrm, OpenSSH 10.6p2 and uv 0.13.7 | `ghcr.io/libre-devops/ansible:2.22.0`<br>`docker.io/libredevops/ansible:2.22.0` |
-| `ansible` | `2.16.20` `2.16`<br>`2.16.20-py3.12-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | ansible-core 2.16.20 on Python 3.12, for hosts whose only Python is 3.6 (RHEL 8): the last line that supports them. With ansible-lint, jmespath, netaddr, pywinrm, OpenSSH 10.6p2 and uv 0.13.7 | `ghcr.io/libre-devops/ansible:2.16.20`<br>`docker.io/libredevops/ansible:2.16.20` |
-| `ansible-azure` | `4.2.0` `4` `latest`<br>`4.2.0-YYYYMMDD` | `dhi.io/python:3.14-debian13-dev` | azure.azcollection 4.2.0 and its Python requirements, on ansible-core 2.22.0 and Python 3.14, with ansible-lint, OpenSSH 10.6p2 and uv 0.13.7 | `ghcr.io/libre-devops/ansible-azure:4.2.0`<br>`docker.io/libredevops/ansible-azure:4.2.0` |
+| `ansible` | `2.22.0` `2.22` `latest`<br>`2.22.0-py3.14-YYYYMMDD` | `dhi.io/python:3.14-debian13-dev` | ansible-core 2.22.0 on Python 3.14, with ansible-lint, Molecule, containers.podman 1.21.2, jmespath, netaddr, pywinrm, OpenSSH 10.6p2 and uv 0.13.7 | `ghcr.io/libre-devops/ansible:2.22.0`<br>`docker.io/libredevops/ansible:2.22.0` |
+| `ansible` | `2.22.0-podman` `2.22-podman` `podman`<br>`2.22.0-py3.14-podman-YYYYMMDD` | `dhi.io/python:3.14-debian13-dev` | ansible-core 2.22.0 on Python 3.14, with Molecule and containers.podman 1.21.2 for scenarios that test against containers, Podman 5, ansible-lint, OpenSSH 10.6p2 and uv 0.13.7 | `ghcr.io/libre-devops/ansible:2.22.0-podman`<br>`docker.io/libredevops/ansible:2.22.0-podman` |
+| `ansible` | `2.16.20` `2.16`<br>`2.16.20-py3.12-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | ansible-core 2.16.20 on Python 3.12, for hosts whose only Python is 3.6 (RHEL 8): the last line that supports them. With ansible-lint, Molecule, containers.podman 1.21.2, jmespath, netaddr, pywinrm, OpenSSH 10.6p2 and uv 0.13.7 | `ghcr.io/libre-devops/ansible:2.16.20`<br>`docker.io/libredevops/ansible:2.16.20` |
+| `ansible-azure` | `4.2.0` `4` `latest`<br>`4.2.0-YYYYMMDD` | `dhi.io/python:3.14-debian13-dev` | azure.azcollection 4.2.0 and its Python requirements, on ansible-core 2.22.0 and Python 3.14, with ansible-lint, Molecule, containers.podman 1.21.2, OpenSSH 10.6p2 and uv 0.13.7 | `ghcr.io/libre-devops/ansible-azure:4.2.0`<br>`docker.io/libredevops/ansible-azure:4.2.0` |
 | `azure-terraform` | `1.17.2` `1.17` `1` `latest`<br>`1.17.2-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | Terraform 1.17.2 by default, TFLint 0.66.0, terraform-docs 0.24.0, Conftest 0.71.1; in a local provider mirror, azurerm 5.13.0, 5.12.0, 5.11.0, azapi 2.13.0, 2.12.0, 2.11.0 and msgraph 0.6.0, 0.5.0, 0.4.0 | `ghcr.io/libre-devops/azure-terraform:1.17.2`<br>`docker.io/libredevops/azure-terraform:1.17.2` |
 | `powershell` | `7.6.10` `7.6` `7` `lts` `latest`<br>`7.6.10-YYYYMMDD` | `dhi.io/debian-base:trixie-debian13-dev` | PowerShell 7.6.10, Az 16.5.0, Microsoft.Graph 2.41.2, Pester 6.2.0, PSScriptAnalyzer 1.25.0, LibreDevOpsHelpers 3.0.1 | `ghcr.io/libre-devops/powershell:7.6.10`<br>`docker.io/libredevops/powershell:7.6.10` |
 | `toolbox` | `1` `latest`<br>`1-YYYYMMDD` | `dhi.io/python:3.12-debian13-dev` | Python 3.12 and uv 0.13.7, Azure CLI 2.92.0, ldo-cli 0.8.1, Terraform 1.17.2 by default (tenv 4.15.1), TFLint 0.66.0, terraform-docs 0.24.0, Conftest 0.71.1, PowerShell 7.6.10 with Az 16.5.0, Microsoft.Graph 2.41.2, Pester 6.2.0, PSScriptAnalyzer 1.25.0 and LibreDevOpsHelpers 3.0.1 | `ghcr.io/libre-devops/toolbox:1`<br>`docker.io/libredevops/toolbox:1` |
@@ -190,6 +192,7 @@ Every image also has bash, git, curl, ca-certificates, ShellCheck 0.11.0, shfmt 
 | Terraform for Azure in an air-gapped or restricted network | `azure-terraform` | azurerm, azapi and msgraph install from a local mirror, with no registry |
 | Ansible playbooks against Azure | `ansible-azure` | The Azure collection and its many Python libraries, already installed and patched |
 | Ansible for hosts whose only Python is 3.6, such as RHEL 8 | `ansible:2.16` | ansible-core 2.17 and later cannot manage them; see [Ansible](#ansible) |
+| Testing Ansible roles and collections with Molecule against containers | `ansible:podman` | Molecule starts the test containers with Podman inside the image; see [Molecule](#molecule) |
 | Building and pushing images in a CI job, without Docker or a privileged container | `podman`, or a `-podman` flavour such as `azure-cli:podman` or `toolbox:podman` | Rootless Podman inside the container; see [Podman in a container](#podman-in-a-container) |
 | Self-hosted Azure Pipelines agents, GitHub Actions runners or GitLab runners | `azure-pipelines-agent`, `github-runner`, `gitlab-runner` | Ephemeral by default; the `toolbox` tags carry every toolbox tool |
 | Several tool families in one job, or an interactive shell | `toolbox` | Everything together; the largest image (the Az PowerShell modules and the Azure CLI dominate its size) |
@@ -217,14 +220,14 @@ Every release records its digests in this README and in
 | Image | Versions |
 | --- | --- |
 | `python` | Every CPython release from 3.12 upwards that upstream still supports |
-| `ansible` | The current ansible-core, and 2.16 for managed hosts on Python 3.6 |
+| `ansible` | The current ansible-core, on its own and with Podman (`-podman` tags), and 2.16 for managed hosts on Python 3.6 |
 | `ansible-azure` | The current azure.azcollection, on the current `ansible` |
 | `azure-cli` | The current release, and 2.72.0 as a long-lived line for networks whose TLS inspection fails the stricter certificate checks in Python 3.13 and later |
 | `terraform` | The current Terraform 1.x as the default, on Debian and on Alpine; any other version through `.terraform-version` |
 | `azure-terraform` | The current `terraform`, with the newest three minor releases of azurerm, azapi and msgraph |
 | `powershell` | The current PowerShell LTS |
 | `toolbox` | The latest `azure-cli`, `terraform` and `powershell`, with the Azure CLI's Python |
-| `podman` | Podman 5 from the distribution, and `-podman` flavours of the latest `azure-cli`, `terraform` and `toolbox` |
+| `podman` | Podman 5 from the distribution, and `-podman` flavours of the latest `ansible`, `azure-cli`, `terraform` and `toolbox` |
 | `azure-pipelines-agent`, `github-runner`, `gitlab-runner` | The current agent release, on its own, atop `toolbox`, and atop `toolbox` with Podman |
 
 **Support.** A version is supported while it is listed in `versions.yml`: its moving tags are
@@ -387,8 +390,9 @@ docker run --rm --user "$(id -u):0" -v "$PWD:/work" -v "$HOME/.ssh:/home/app/.ss
 ```
 
 Install collections per project from a `requirements.yml` with `ansible-galaxy collection
-install -r requirements.yml`; they go to `~/.ansible/collections`. `ansible-azure` has
-`azure.azcollection` installed for every user already, so authenticate the usual ways
+install -r requirements.yml`; they go to `~/.ansible/collections`. Every ansible image has
+`containers.podman` installed for every user, and `ansible-azure` has
+`azure.azcollection` as well, so authenticate the usual ways
 (`AZURE_CLIENT_ID` and friends, a managed identity, or `~/.azure/credentials`). Azure modules
 run on `localhost`, where they need Ansible's own Python, which has their libraries: that is
 what Ansible uses for an implicit `localhost`. If your inventory lists `localhost`, give it
@@ -399,6 +403,34 @@ and from 2.17 that must be Python 3.7 or newer. RHEL 8 and its rebuilds ship Pyt
 the system (platform) Python, so the current ansible-core cannot manage them without first
 installing a newer Python on each. The 2.16 line still can, and Renovate keeps it on 2.16
 patch releases. Use it for those hosts, and the current line for everything else.
+
+#### Molecule
+
+Every ansible image has Molecule, with molecule-plugins for scenarios written for its
+`podman` driver. Run `molecule test` from the root of a role or collection:
+
+```sh
+# Scenarios that test against hosts you already have (the default driver)
+docker run --rm --user "$(id -u):0" -v "$PWD:/work" -v "$HOME/.ssh:/home/app/.ssh:ro" \
+  ghcr.io/libre-devops/ansible:2.22 molecule test
+
+# Scenarios that test against containers: ansible:podman starts them with its own Podman
+docker run --rm --device /dev/fuse --security-opt label=disable \
+  --security-opt seccomp=unconfined --security-opt apparmor=unconfined \
+  --security-opt systempaths=unconfined \
+  -v "$PWD:/work" ghcr.io/libre-devops/ansible:podman molecule test
+```
+
+- **Containers.** Both of Molecule's container layouts work in `ansible:podman`: its
+  [ansible-native](https://docs.ansible.com/projects/molecule/examples/podman/) scenarios,
+  whose `create.yml` and `destroy.yml` call `containers.podman` themselves, and scenarios with
+  `driver: name: podman`. Podman runs as uid 10001, so leave out `--user`, and see
+  [Podman in a container](#podman-in-a-container) for the flags and for Podman on the host.
+  The `docker` driver needs a Docker daemon, so it does not work here.
+- **The test images need Python** for most modules, as Molecule's documentation says. A
+  minimal image works with `gather_facts: false` and `ansible.builtin.raw`.
+- **Dependencies.** A scenario's `dependency` step installs its `requirements.yml` from Galaxy
+  at run time, so it needs the network. `containers.podman` is already installed.
 
 ### Rootless Podman
 
@@ -590,10 +622,12 @@ image's `app` user (uid 10001), inside the container.
 | --- | --- |
 | `podman:5` | Podman on its own, with a `docker` command that runs it |
 | `azure-cli:podman`, `terraform:podman`, `toolbox:podman` | The image's tools, plus Podman |
+| `ansible:podman` | Molecule scenarios that test against containers (see [Molecule](#molecule)) |
 | `azure-pipelines-agent:toolbox-podman`, `github-runner:toolbox-podman`, `gitlab-runner:toolbox-podman` | Self-hosted agents whose jobs build images |
 
 Every one of them is tested on every pull request the same way: inside the container, as uid
-10001, Podman pulls and runs an image, builds a new one, and runs that.
+10001, Podman pulls and runs an image, builds a new one, and runs that. `ansible:podman` also
+runs a Molecule scenario against a container it starts.
 
 ### What the outer container needs
 
@@ -732,7 +766,9 @@ levels reject both, so run them in a namespace labelled `privileged`.
   container's own overlay. Newer Buildah overlays the build context as well.
 - Nested containers share the outer container's namespaces and need no cgroups
   (`/etc/containers/containers.conf`), and builds isolate `RUN` steps with chroot
-  (`BUILDAH_ISOLATION=chroot`): a container cannot create most namespaces of its own.
+  (`BUILDAH_ISOLATION=chroot`): a container cannot create most namespaces of its own. The
+  exception is the UTS namespace, so a nested container can have its own hostname, as
+  Molecule's test containers do.
 
 ## Configuration reference
 
@@ -749,7 +785,7 @@ levels reject both, so run them in a namespace labelled `privileged`.
 | `/home/app/.tenv` | tenv's Terraform installs (`TENV_ROOT`) | `app`, and any uid in group 0 |
 | `/opt/ansible` | Ansible's virtual environment (`ansible`, `ansible-azure`) | root |
 | `/usr/local/share/terraform` | The provider mirror and the two CLI configurations (`azure-terraform`) | root |
-| `/usr/share/ansible/collections` | Collections for every user (`ansible-azure`) | root |
+| `/usr/share/ansible/collections` | Collections for every user: `containers.podman` (every ansible image), `azure.azcollection` (`ansible-azure`) | root |
 | `/opt/azure-pipelines-agent`, `/opt/actions-runner`, `/opt/gitlab-runner` | The agents, their registration and their work (`azure-pipelines-agent`, `github-runner`, `gitlab-runner`) | `app`, and any uid in group 0 |
 
 ### Environment

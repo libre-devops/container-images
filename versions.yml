@@ -99,6 +99,9 @@ tools:
   openssh: 10.6p2
   # renovate: datasource=github-releases depName=libre-devops/ldo-cli extractVersion=^v(?<version>.+)$
   ldo-cli: 0.8.1
+  # In every ansible image: what Molecule's Podman scenarios drive Podman with.
+  # renovate: datasource=galaxy-collection depName=containers.podman
+  containers-podman: 1.21.2
   # renovate: datasource=nuget depName=Az registryUrl=https://www.powershellgallery.com/api/v2/
   az-powershell: 16.5.0
   # renovate: datasource=nuget depName=Microsoft.Graph registryUrl=https://www.powershellgallery.com/api/v2/
@@ -216,24 +219,27 @@ images:
       - { version: "1.17.2", base: debian, flavour: podman, base_stage: podman, latest: true, moving: [minor, major] }
 
   ansible:
-    description: ansible-core and ansible-lint in their own virtual environment, with OpenSSH and uv
-    contents: ansible-core {version} on Python {python}, with ansible-lint, jmespath, netaddr, pywinrm, OpenSSH {openssh} and uv {uv}
-    tools: [uv, openssh]
+    description: ansible-core, ansible-lint and Molecule in their own virtual environment, with OpenSSH and uv
+    contents: ansible-core {version} on Python {python}, with ansible-lint, Molecule, containers.podman {containers_podman}, jmespath, netaddr, pywinrm, OpenSSH {openssh} and uv {uv}
+    tools: [uv, openssh, containers-podman]
     # What the OpenSSH client built from source links against.
     os_packages: [openssl, zlib]
     versions:
       # renovate: datasource=pypi depName=ansible-core
       - { version: "2.22.0", python: "3.14", base: python-3.14, latest: true, moving: [minor] }
+      # Podman underneath, for Molecule scenarios that test against containers.
+      # renovate: datasource=pypi depName=ansible-core
+      - { version: "2.22.0", python: "3.14", base: python-3.14, flavour: podman, base_stage: podman, latest: true, moving: [minor], contents: "ansible-core {version} on Python {python}, with Molecule and containers.podman {containers_podman} for scenarios that test against containers, Podman {podman}, ansible-lint, OpenSSH {openssh} and uv {uv}" }
       # Only for managing hosts whose sole Python is 3.6, such as RHEL 8 and its
       # platform-python, without upgrading their Python first: ansible-core 2.17
       # and later need Python 3.7 or newer on every managed host. Renovate keeps
       # this line on 2.16 patch releases. Use the current line for anything else.
       # renovate: datasource=pypi depName=ansible-core
-      - { version: "2.16.20", python: "3.12", base: python-3.12, moving: [minor], contents: "ansible-core {version} on Python {python}, for hosts whose only Python is 3.6 (RHEL 8): the last line that supports them. With ansible-lint, jmespath, netaddr, pywinrm, OpenSSH {openssh} and uv {uv}" }
+      - { version: "2.16.20", python: "3.12", base: python-3.12, moving: [minor], contents: "ansible-core {version} on Python {python}, for hosts whose only Python is 3.6 (RHEL 8): the last line that supports them. With ansible-lint, Molecule, containers.podman {containers_podman}, jmespath, netaddr, pywinrm, OpenSSH {openssh} and uv {uv}" }
 
   ansible-azure:
     description: The ansible image with the azure.azcollection collection and its Python requirements
-    contents: azure.azcollection {version} and its Python requirements, on ansible-core {ansible} and Python {python}, with ansible-lint, OpenSSH {openssh} and uv {uv}
+    contents: azure.azcollection {version} and its Python requirements, on ansible-core {ansible} and Python {python}, with ansible-lint, Molecule, containers.podman {containers_podman}, OpenSSH {openssh} and uv {uv}
     includes: [ansible]
     download: azure-azcollection
     tests: [ansible, ansible-azure]

@@ -45,6 +45,7 @@ ARG UV_ASSET=""
 ARG LDO_CLI_ASSET=""
 ARG POWERSHELL_ASSET=""
 ARG AZURE_AZCOLLECTION_ASSET=""
+ARG CONTAINERS_PODMAN_ASSET=""
 ARG AZURE_PIPELINES_AGENT_ASSET=""
 ARG GITHUB_RUNNER_ASSET=""
 ARG GITLAB_RUNNER_ASSET=""
@@ -136,8 +137,10 @@ ARG ANSIBLE_LOCK
 COPY --from=fetch /fetched/uv/ /
 COPY --from=openssh /built/ /
 RUN --mount=type=bind,source=images,target=/src \
+    --mount=type=bind,from=fetch,source=/fetched,target=/fetched \
     sh /src/common/ensure-python.sh "${PYTHON_MINOR}" /usr/local/bin/uv \
     && sh /src/ansible/install.sh /usr/local/bin/uv "/src/${ANSIBLE_LOCK}" \
+        /fetched/containers-podman/collections \
     && sh /src/common/finalise.sh
 # ansible-core refuses to run unless the locale encoding is UTF-8.
 ENV HOME=/home/app \
@@ -157,7 +160,8 @@ COPY --from=openssh /built/ /
 RUN --mount=type=bind,source=images,target=/src \
     --mount=type=bind,from=fetch,source=/fetched,target=/fetched \
     sh /src/common/ensure-python.sh "${PYTHON_MINOR}" /usr/local/bin/uv \
-    && sh /src/ansible/install.sh /usr/local/bin/uv "/src/${ANSIBLE_LOCK}" /fetched/azure-azcollection/collections \
+    && sh /src/ansible/install.sh /usr/local/bin/uv "/src/${ANSIBLE_LOCK}" \
+        /fetched/containers-podman/collections /fetched/azure-azcollection/collections \
     && sh /src/common/finalise.sh
 ENV HOME=/home/app \
     LANG=C.UTF-8 \
