@@ -31,6 +31,7 @@ Docker Hub from the same digest.
 
 - [Overview](#overview)
 - [Quick start](#quick-start)
+- [How it works](#how-it-works)
 - [Using this as a starting point](#using-this-as-a-starting-point)
 - [Images](#images)
 - [Choosing an image](#choosing-an-image)
@@ -119,6 +120,89 @@ cosign verify ghcr.io/libre-devops/terraform:1 \
   --certificate-identity https://github.com/libre-devops/container-images/.github/workflows/release.yml@refs/heads/main \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
+
+## How it works
+
+Every image, version and base is listed in [`versions.yml`](./versions.yml), and every change to
+it reaches the registries the same way: a pull request that builds, tests and scans every image,
+then a release from `main`. Bots keep the versions and pins current, and a published image is
+rebuilt as soon as a fix for it exists. The numbers match the step key in the full diagram below.
+
+```mermaid
+flowchart TB
+  subgraph upstream["Upstream"]
+    rel["Tool releases<br/>GitHub, PyPI, Galaxy, Terraform registry,<br/>PowerShell Gallery"]
+    dhi["Docker Hardened Images<br/>Debian 13 and Alpine bases"]
+  end
+  subgraph current["Keeping current"]
+    renovate["Renovate<br/>weekly, and at once for security fixes"]
+    pins["Pins workflow, daily<br/>digests, providers and roles;<br/>SHA-256 pins; vulnerable dependencies patched"]
+  end
+  subgraph pr["Pull request: Build workflow"]
+    pull["Pull request"]
+    build["Build every image<br/>natively on amd64 and arm64"]
+    tests{{"Smoke tests"}}
+    scan{{"Trivy scan gate"}}
+    pass{"All pass?"}
+  end
+  subgraph main["Main: Release and Scan workflows"]
+    merge["Merge to main"]
+    release["Release<br/>one digest in both registries"]
+    readme["README digests<br/>pull request"]
+    daily["Scan workflow, daily"]
+  end
+  subgraph registries["Registries"]
+    ghcr["ghcr.io/libre-devops"]
+    hub["docker.io/libredevops"]
+    sig["cosign signature,<br/>SBOM, SLSA provenance"]
+  end
+  subgraph run["Where images run"]
+    ci["CI jobs"]
+    agents["Self-hosted agents"]
+    hosts["Workstations and clusters"]
+  end
+  rel -->|1| renovate
+  dhi -->|2| pins
+  renovate -->|3| pull
+  pins -->|4| pull
+  pull -->|5 every push| build
+  build -->|6| tests
+  tests -->|7| scan
+  scan --> pass
+  pass -->|8 fails| pull
+  pass -->|9 passes| merge
+  merge -->|10| release
+  release -->|11| ghcr
+  release --> hub
+  hub -.->|12| sig
+  release -->|13| readme
+  ghcr -->|14| ci
+  hub --> agents
+  hub --> hosts
+  daily -->|15 a fix exists| release
+  classDef step fill:#ffffff,stroke:#666666,color:#1a1a1a
+  classDef gate fill:#fff2cc,stroke:#d6b656,color:#1a1a1a
+  classDef upstreamNode fill:#f5f5f5,stroke:#666666,color:#1a1a1a
+  classDef registry fill:#dae8fc,stroke:#6c8ebf,color:#1a1a1a
+  classDef yours fill:#d5e8d4,stroke:#82b366,color:#1a1a1a
+  class renovate,pins,pull,build,merge,release,readme,daily,sig step
+  class tests,scan,pass gate
+  class rel,dhi upstreamNode
+  class ghcr,hub registry
+  class ci,agents,hosts yours
+  style upstream fill:#ffffff,stroke:#666666,color:#1a1a1a
+  style current fill:#ffffff,stroke:#b85450,color:#1a1a1a
+  style pr fill:#ffffff,stroke:#b85450,color:#1a1a1a
+  style main fill:#ffffff,stroke:#b85450,color:#1a1a1a
+  style registries fill:#ffffff,stroke:#6c8ebf,color:#1a1a1a
+  style run fill:#ffffff,stroke:#82b366,color:#1a1a1a
+```
+
+The full diagram, with icons and each step explained. Its source is
+[`docs/diagrams/container-deployment.drawio`](./docs/diagrams/container-deployment.drawio): open
+it in [draw.io](https://app.diagrams.net) to edit it.
+
+[![Libre DevOps container images: build, release and refresh flow](./docs/diagrams/container-deployment.svg)](./docs/diagrams/container-deployment.svg)
 
 ## Using this as a starting point
 
@@ -1101,6 +1185,7 @@ images/common/          Distribution-neutral build steps shared by every image
 images/<image>/         An image's own install steps
 images/locks/           Generated: hash-locked Python requirements
 vex/                    VEX statements for findings shown not to apply
+docs/diagrams/          The build and release flow, in draw.io with an SVG preview
 examples/kubernetes/    Kubernetes manifests for Podman in a container and the CI agents
 examples/compose/       Docker Compose files: the toolbox as a shell, and the CI agents
 tests/                  Smoke tests, run in every image as the app user
