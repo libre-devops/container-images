@@ -10,7 +10,7 @@ set -eu
 dir=${1:?usage: go-build-all.sh <dir>}
 lib=$(dirname "$0")
 
-for tool in shfmt tenv tflint terraform-docs conftest; do
+for tool in shfmt tenv tflint terraform-docs conftest yq; do
 	var=$(echo "$tool" | tr 'a-z-' 'A-Z_')_GO
 	eval "spec=\${$var:-}"
 	if [ -n "$spec" ]; then

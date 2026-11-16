@@ -111,7 +111,8 @@ jobs:
           title: "chore: refresh base image digests and security patches"
           body: |
             Daily refresh: every base image tag in `versions.yml` re-resolved to its current
-            digest, and every pinned dependency re-audited against OSV, with any newly fixed
+            digest, the Terraform providers and Galaxy roles re-resolved to their newest
+            releases, and every pinned dependency re-audited against OSV, with any newly fixed
             vulnerability patched. Build runs on this every day; once it passes, it merges
             this pull request and starts Release. Nothing here needs a person.
       - name: Start Build on the pull request

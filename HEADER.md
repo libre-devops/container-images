@@ -51,7 +51,7 @@ Docker Hub from the same digest.
 
 ## Overview
 
-Eleven images, each a thin layer of pinned tools on a hardened base:
+Twelve images, each a thin layer of pinned tools on a hardened base:
 
 - **`python`**: CPython and uv, with one tag for every supported CPython from 3.12 upwards.
 - **`ansible`**: ansible-core, ansible-lint and [Molecule](https://docs.ansible.com/projects/molecule/)
@@ -75,6 +75,11 @@ Eleven images, each a thin layer of pinned tools on a hardened base:
   [LibreDevOpsHelpers](https://github.com/libre-devops/powershell-helpers).
 - **`toolbox`**: Python, the Azure CLI, Terraform and PowerShell in one image, assembled from
   the same build stages.
+- **`cicd-helper`**: Ansible with ansible-lint, Molecule, pytest and every
+  [libre_devops role](https://galaxy.ansible.com/ui/standalone/namespaces/libre_devops/) and
+  the collections they use, beside the Azure CLI, Terraform with `azure-terraform`'s provider
+  mirror, PowerShell with Az and Microsoft.Graph, yq and just. Assembled like `toolbox`,
+  without ldo-cli, LibreDevOpsHelpers or Podman (see [cicd-helper](#cicd-helper)).
 - **`podman`**: Podman set up to run rootless inside a container (Podman in Podman, or in
   Docker or Kubernetes), with a `docker` command that runs it. `ansible`, `azure-cli`,
   `terraform` and `toolbox` also come as `-podman` flavours built on it, for CI jobs that build
@@ -163,6 +168,7 @@ Locally, `just build`, `just test`, `just scan` and `just lint` run the same ste
 | Testing Ansible roles and collections with Molecule against containers | `ansible:podman` | Molecule starts the test containers with Podman inside the image; see [Molecule](#molecule) |
 | Building and pushing images in a CI job, without Docker or a privileged container | `podman`, or a `-podman` flavour such as `azure-cli:podman` or `toolbox:podman` | Rootless Podman inside the container; see [Podman in a container](#podman-in-a-container) |
 | Self-hosted Azure Pipelines agents, GitHub Actions runners or GitLab runners | `azure-pipelines-agent`, `github-runner`, `gitlab-runner` | Ephemeral by default; the `toolbox` tags carry every toolbox tool |
+| Running the libre_devops Ansible roles, or Ansible beside Azure, Terraform and PowerShell | `cicd-helper` | The roles and their collections installed, with the Azure CLI, Terraform and its provider mirror, and PowerShell; see [cicd-helper](#cicd-helper) |
 | Several tool families in one job, or an interactive shell | `toolbox` | Everything together; the largest image (the Az PowerShell modules and the Azure CLI dominate its size) |
 | A specific CPython | `python:<major.minor>` | One tag per supported CPython |
 | The smallest Terraform image | `terraform:alpine` | About a third smaller than the Debian image. musl, so not for Azure Pipelines container jobs, which need glibc |
@@ -195,6 +201,7 @@ Every release records its digests in this README and in
 | `azure-terraform` | The current `terraform`, with the newest three minor releases of azurerm, azapi and msgraph |
 | `powershell` | The current PowerShell LTS |
 | `toolbox` | The latest `azure-cli`, `terraform` and `powershell`, with the Azure CLI's Python |
+| `cicd-helper` | ansible-core 2.21 (the last line on the Azure CLI's Python, 3.12), with the latest roles, `azure-cli`, `terraform` and its provider mirror, and `powershell` |
 | `podman` | Podman 5 from the distribution, and `-podman` flavours of the latest `ansible`, `azure-cli`, `terraform` and `toolbox` |
 | `azure-pipelines-agent`, `github-runner`, `gitlab-runner` | The current agent release, on its own, atop `toolbox`, and atop `toolbox` with Podman |
 
@@ -399,6 +406,41 @@ docker run --rm --device /dev/fuse --security-opt label=disable \
   minimal image works with `gather_facts: false` and `ansible.builtin.raw`.
 - **Dependencies.** A scenario's `dependency` step installs its `requirements.yml` from Galaxy
   at run time, so it needs the network. `containers.podman` is already installed.
+
+### cicd-helper
+
+Everything the libre_devops roles need to run, in one image, for a CI job or a workstation:
+
+```sh
+# A playbook that uses the roles, against hosts in an inventory
+docker run --rm --user "$(id -u):0" -v "$PWD:/work" -v "$HOME/.ssh:/home/app/.ssh:ro" \
+  ghcr.io/libre-devops/cicd-helper:latest ansible-playbook -i inventory.ini site.yml
+```
+
+- **The roles:** every role in the `libre_devops` namespace, at its newest release, installed
+  for every user in `/usr/share/ansible/roles`, so a play names them directly
+  (`roles: [libre_devops.mde_linux]`); `ansible-galaxy role list` shows the versions. The daily
+  Pins run picks up a new role or release by itself, and its pull request merges once Build
+  passes. Build checks that every role's `requirements.yml` and dependencies are met, so a role
+  that needs a collection the image lacks stops there, not at run time.
+- **Collections:** community.general (on 11.x, which the roles' `requirements.yml` allows),
+  ansible.posix, containers.podman and theforeman.foreman, with the Python libraries their
+  modules need on the controller, and `rpm` for uploading RPMs to Satellite.
+- **ansible-core 2.21**, not 2.22 as in `ansible`: 2.22 needs Python 3.13, and this image is on
+  the Azure CLI's Python, 3.12. It is also the line the roles test against.
+- **pytest** runs in Ansible's own virtual environment, so unit tests can import Ansible's
+  libraries. Molecule is there for scenarios that test against hosts you already have; with no
+  Podman, use `ansible:podman` for the roles' container scenarios.
+- **JUnit XML** for CI test views: `libre_devops.test_results_report` writes it from the
+  checks roles' results, `pytest --junitxml=report.xml` from tests, and Ansible's own callback
+  from any playbook (`ANSIBLE_CALLBACKS_ENABLED=ansible.builtin.junit`, with
+  `JUNIT_OUTPUT_DIR`). TFLint (`--format junit`) and Pester write it too.
+- **Other tools:** yq, just (which the roles' own CI runs), yamllint, sshpass (a first login
+  with a password, `ansible -k`), rsync (`ansible.posix.synchronize`), zip and unzip, with
+  curl, jq, git and the CA tooling every image has. The image's own `python3` has Requests,
+  for scripts.
+- **Terraform** installs azurerm, azapi and msgraph from the local mirror, as in
+  [azure-terraform](#azure-terraform), and the Azure CLI is there for azurerm to log in with.
 
 ### Rootless Podman
 
@@ -746,14 +788,15 @@ levels reject both, so run them in a namespace labelled `privileged`.
 | --- | --- | --- |
 | `/home/app` | `HOME` for every user the image runs as | `app`, and any uid in group 0 |
 | `/work` | Working directory; mount your project here | `app`, and any uid in group 0 |
-| `/opt/az` | The Azure CLI's virtual environment (`azure-cli`, `toolbox`) | root |
+| `/opt/az` | The Azure CLI's virtual environment (`azure-cli`, `toolbox`, `cicd-helper`) | root |
 | `/opt/ldo-cli` | ldo-cli's virtual environment (`azure-cli`, `toolbox`) | root |
-| `/opt/microsoft/powershell/7` | PowerShell (`powershell`, `toolbox`) | root |
+| `/opt/microsoft/powershell/7` | PowerShell (`powershell`, `toolbox`, `cicd-helper`) | root |
 | `/usr/local/share/powershell/Modules` | Pinned PowerShell modules, for all users | root |
 | `/home/app/.tenv` | tenv's Terraform installs (`TENV_ROOT`) | `app`, and any uid in group 0 |
-| `/opt/ansible` | Ansible's virtual environment (`ansible`, `ansible-azure`) | root |
-| `/usr/local/share/terraform` | The provider mirror and the two CLI configurations (`azure-terraform`) | root |
-| `/usr/share/ansible/collections` | Collections for every user: `containers.podman` (every ansible image), `azure.azcollection` (`ansible-azure`) | root |
+| `/opt/ansible` | Ansible's virtual environment (`ansible`, `ansible-azure`, `cicd-helper`) | root |
+| `/usr/share/ansible/roles` | Galaxy roles for every user (`cicd-helper`) | root |
+| `/usr/local/share/terraform` | The provider mirror and the two CLI configurations (`azure-terraform`, `cicd-helper`) | root |
+| `/usr/share/ansible/collections` | Collections for every user: `containers.podman` (every ansible image), `azure.azcollection` (`ansible-azure`), and the roles' collections (`cicd-helper`) | root |
 | `/opt/azure-pipelines-agent`, `/opt/actions-runner`, `/opt/gitlab-runner` | The agents, their registration and their work (`azure-pipelines-agent`, `github-runner`, `gitlab-runner`) | `app`, and any uid in group 0 |
 
 ### Environment
@@ -766,17 +809,17 @@ Set by the images; override any of them with `-e` or your CI system's environmen
 | `REQUESTS_CA_BUNDLE` | `/etc/ssl/certs/ca-certificates.crt` | all | Python `requests` (and the Azure CLI) use the system trust store |
 | `NODE_EXTRA_CA_CERTS` | `/etc/ssl/certs/ca-certificates.crt` | all | Node.js, which the CI agents run tasks with, trusts the system store too |
 | `UV_NATIVE_TLS` | `true` | all | uv uses the system trust store rather than its own |
-| `LANG` | `C.UTF-8` | `ansible`, `ansible-azure` | ansible-core refuses to run without a UTF-8 locale |
+| `LANG` | `C.UTF-8` | `ansible`, `ansible-azure`, `cicd-helper` | ansible-core refuses to run without a UTF-8 locale |
 | `BUILDAH_ISOLATION` | `chroot` | `podman`, `-podman` flavours | `podman build` isolates `RUN` steps with chroot, which works inside a container |
-| `TF_CLI_CONFIG_FILE` | `/usr/local/share/terraform/airgapped.tfrc` | `azure-terraform` | Mirrored providers install from the mirror; `registry.tfrc` uses the registry for everything |
-| `PYTHONUNBUFFERED` | `1` | `python`, `azure-cli`, `toolbox` | Unbuffered output in CI logs |
-| `AZURE_CORE_COLLECT_TELEMETRY` | `no` | `azure-cli`, `toolbox` | No Azure CLI telemetry |
-| `TENV_ROOT` | `/home/app/.tenv` | `terraform`, `toolbox` | Where tenv keeps Terraform versions |
-| `TENV_AUTO_INSTALL` | `true` | `terraform`, `toolbox` | A `.terraform-version` installs on demand; set `false` offline |
-| `CHECKPOINT_DISABLE` | `1` | `terraform`, `toolbox` | No HashiCorp update checks |
-| `POWERSHELL_TELEMETRY_OPTOUT` | `1` | `powershell`, `toolbox` | No PowerShell telemetry |
-| `POWERSHELL_UPDATECHECK` | `Off` | `powershell`, `toolbox` | No update notices |
-| `DOTNET_CLI_TELEMETRY_OPTOUT`, `DOTNET_NOLOGO` | `1` | `powershell`, `toolbox` | No .NET telemetry or banners |
+| `TF_CLI_CONFIG_FILE` | `/usr/local/share/terraform/airgapped.tfrc` | `azure-terraform`, `cicd-helper` | Mirrored providers install from the mirror; `registry.tfrc` uses the registry for everything |
+| `PYTHONUNBUFFERED` | `1` | `python`, `azure-cli`, `toolbox`, `cicd-helper` | Unbuffered output in CI logs |
+| `AZURE_CORE_COLLECT_TELEMETRY` | `no` | `azure-cli`, `toolbox`, `cicd-helper` | No Azure CLI telemetry |
+| `TENV_ROOT` | `/home/app/.tenv` | `terraform`, `toolbox`, `cicd-helper` | Where tenv keeps Terraform versions |
+| `TENV_AUTO_INSTALL` | `true` | `terraform`, `toolbox`, `cicd-helper` | A `.terraform-version` installs on demand; set `false` offline |
+| `CHECKPOINT_DISABLE` | `1` | `terraform`, `toolbox`, `cicd-helper` | No HashiCorp update checks |
+| `POWERSHELL_TELEMETRY_OPTOUT` | `1` | `powershell`, `toolbox`, `cicd-helper` | No PowerShell telemetry |
+| `POWERSHELL_UPDATECHECK` | `Off` | `powershell`, `toolbox`, `cicd-helper` | No update notices |
+| `DOTNET_CLI_TELEMETRY_OPTOUT`, `DOTNET_NOLOGO` | `1` | `powershell`, `toolbox`, `cicd-helper` | No .NET telemetry or banners |
 
 git trusts every directory (`safe.directory = *` in the system configuration), because CI
 systems mount workspaces owned by other uids.
@@ -1038,6 +1081,7 @@ it. The CI matrix, tags, tests and README follow from `versions.yml`.
 | Hash-locked Python dependencies | `images/locks/` | The Pins workflow, on those branches and every day |
 | Base image digests | `versions.yml` | The Pins workflow, every day, as a pull request that merges itself once Build passes |
 | Terraform providers in `azure-terraform` | `versions.yml` (`terraform_providers`), and their SHA-256 in `versions.lock.json` | The Pins workflow, every day: the newest three minor releases, each pinned once its signed checksums verify |
+| Galaxy roles in `cicd-helper` | `versions.yml` (`ansible_roles`), and the SHA-256 of each release's archive in `versions.lock.json` | The Pins workflow, every day: every role in the namespace, at its newest release |
 | GitHub Actions | the workflows, by commit SHA | Renovate |
 
 A download pin, once written, is never re-fetched: an upstream asset that changes after it was

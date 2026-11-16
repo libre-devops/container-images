@@ -59,6 +59,17 @@
       "allowedVersions": "/^2\\.16\\./"
     },
     {
+      "description": "Keep cicd-helper on ansible-core 2.21, the last line that runs on Python 3.12 (the Azure CLI's Python there) and the one the libre_devops roles test against",
+      "matchPackageNames": ["ansible-core"],
+      "matchCurrentVersion": "/^2\\.21\\./",
+      "allowedVersions": "/^2\\.21\\./"
+    },
+    {
+      "description": "Keep community.general on 11.x, the range the libre_devops roles' requirements.yml allows (>=10,<12); raise the roles' range first",
+      "matchPackageNames": ["community.general"],
+      "allowedVersions": "<12.0.0"
+    },
+    {
       "description": "OpenSSH versions look like 10.6p2. It is built from source and must stay on the latest release, so it merges like a patch whatever the bump",
       "matchDatasources": ["custom.openssh-portable"],
       "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)p(?<patch>\\d+)$",
