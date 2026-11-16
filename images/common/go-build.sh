@@ -21,6 +21,9 @@ die() {
 
 [ "$#" -eq 2 ] || die "usage: go-build.sh <root> <spec>"
 root=$1
+# Every step that downloads from the module proxy is retried with backoff
+# (retry.sh): the proxy drops a stream now and then.
+retry="sh $(cd "$(dirname "$0")" && pwd)/retry.sh"
 IFS=';' read -r module version packages ldflags overrides <<EOF
 $2
 EOF
@@ -33,7 +36,7 @@ export GOPROXY="${GOPROXY:-https://proxy.golang.org}" GOSUMDB="${GOSUMDB:-sum.go
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
-source_dir=$(go mod download -json "$module@$version" | sed -n 's/^[[:space:]]*"Dir": "\(.*\)",$/\1/p')
+source_dir=$($retry go mod download -json "$module@$version" | sed -n 's/^[[:space:]]*"Dir": "\(.*\)",$/\1/p')
 [ -d "$source_dir" ] || die "could not download $module@$version"
 cp -R "$source_dir" "$work/src"
 chmod -R u+w "$work/src"
@@ -82,7 +85,7 @@ for override in $overrides; do
 		continue
 	fi
 	echo "go-build: $module: raising $mod from ${have:-none} to $want (known vulnerability fixed there)"
-	go get "$mod@$want"
+	$retry go get "$mod@$want"
 done
 for override in $overrides; do
 	mod=${override%@*}
@@ -97,8 +100,10 @@ pkgs=
 for pair in $(echo "$packages" | tr ',' ' '); do
 	pkgs="$pkgs ${pair%%:*}"
 done
+# Loads, and so downloads, everything the build needs, so the build itself
+# downloads nothing.
 # shellcheck disable=SC2086 # pkgs is a list of package paths
-go list -deps $pkgs >/dev/null
+$retry go list -deps $pkgs >/dev/null
 
 # A clean, tagged checkout makes the toolchain stamp the release version
 # into the binary, as an upstream release build would.
