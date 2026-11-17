@@ -64,7 +64,7 @@ portability:
   alpine: dhi.io/alpine-base:3.24-alpine3.24-dev@sha256:266554e75cb00f88effe4048ba78b6f628d6a5ca67ac9e9727ae37a4a1299ce5
   rhel: registry.access.redhat.com/ubi10/ubi:10.1@sha256:15f0a6e2b448ac7aa24425c9ab541e6402dc32b782844a285ccaeffb1c938fe1
   rhel-minimal: registry.access.redhat.com/ubi10/ubi-minimal:10.2@sha256:f0c7b9ae9914fcf183e7c36fc46864903c2d2caf3af327421913ae54b3d29e94
-  wolfi: cgr.dev/chainguard/wolfi-base:latest@sha256:833c48f1faf32c90e6f9501a2410a9aa28ceb2c594102edd4470053c30efa089
+  wolfi: cgr.dev/chainguard/wolfi-base:latest@sha256:2c12da5496e21e99003b3db3b9246f025e53d533c4df334205391260f1e8f85b
 
 # Tools, by exact version. The Go tools (shfmt, tenv, TFLint, terraform-docs,
 # Conftest) are built from source with this Go, never downloaded as binaries,
@@ -143,7 +143,7 @@ tools:
 # these lists; `just lock` pins every zip once its release's signed checksums
 # verify against the key scripts/images.py holds for its namespace.
 terraform_providers:
-  hashicorp/azurerm: ["5.13.0", "5.12.0", "5.11.0"]
+  hashicorp/azurerm: ["5.14.0", "5.13.0", "5.12.0"]
   azure/azapi: ["2.13.0", "2.12.0", "2.11.0"]
   microsoft/msgraph: ["0.6.0", "0.5.0", "0.4.0"]
 
@@ -158,15 +158,15 @@ ansible_roles:
     aria_automation_deployment: 1.0.0
     azure_arc: 1.0.0
     entra_device_groups: 1.0.0
-    mde_linux: 1.1.1
-    mde_linux_checks: 1.0.1
+    mde_linux: 1.2.0
+    mde_linux_checks: 1.1.1
     puppet_agent: 1.0.0
-    python: 1.0.0
+    python: 1.1.0
     rpm_repo_download: 1.0.0
     satellite_content_upload: 1.0.0
     ssh_bootstrap: 1.0.0
-    standalone_package_installer: 1.0.0
-    test_results_report: 1.0.0
+    standalone_package_installer: 1.1.0
+    test_results_report: 1.0.1
 
 # In every image, on top of bash, git, curl and ca-certificates.
 common: [shellcheck, shfmt, jq]

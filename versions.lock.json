@@ -98,16 +98,6 @@
       }
     },
     "hashicorp/azurerm": {
-      "5.11.0": {
-        "amd64": {
-          "sha256": "2345a6104bb485141afb8f0047a48a5f27c3bb4e6eeb360c7955f381227d88dd",
-          "url": "https://releases.hashicorp.com/terraform-provider-azurerm/5.11.0/terraform-provider-azurerm_5.11.0_linux_amd64.zip"
-        },
-        "arm64": {
-          "sha256": "6a5b9d6dd86a759f8bfd81e15e7e688531c85ee9660bd5923f99e993a1f15c62",
-          "url": "https://releases.hashicorp.com/terraform-provider-azurerm/5.11.0/terraform-provider-azurerm_5.11.0_linux_arm64.zip"
-        }
-      },
       "5.12.0": {
         "amd64": {
           "sha256": "2c21bbfb81da265c36c7f7fe7863ea97069662ac55a94dd5d585bf70b52747b0",
@@ -126,6 +116,16 @@
         "arm64": {
           "sha256": "d0b6cb5ced81062fc2cb9cc4a2d3269fa1c215cbe8a071ec87acc91ea5e28cc1",
           "url": "https://releases.hashicorp.com/terraform-provider-azurerm/5.13.0/terraform-provider-azurerm_5.13.0_linux_arm64.zip"
+        }
+      },
+      "5.14.0": {
+        "amd64": {
+          "sha256": "a80e54eb725eaa775b5517db63e1c55568bef1c95665fef15e32e76b5af4a674",
+          "url": "https://releases.hashicorp.com/terraform-provider-azurerm/5.14.0/terraform-provider-azurerm_5.14.0_linux_amd64.zip"
+        },
+        "arm64": {
+          "sha256": "cd0509974ee212aec6ba29a071ba3dc1c3bfe69ab4c38a4ab05e0fc45a24192f",
+          "url": "https://releases.hashicorp.com/terraform-provider-azurerm/5.14.0/terraform-provider-azurerm_5.14.0_linux_arm64.zip"
         }
       }
     },
@@ -236,15 +236,15 @@
       }
     },
     "libre_devops.mde_linux": {
-      "1.1.1": {
-        "sha256": "22be738c75d920e7fa27794bf74b8225ddc8ad81f7fe07c11426cbde1fb8de4c",
-        "url": "https://github.com/libre-devops/ansible-role-mde-linux/archive/refs/tags/1.1.1.tar.gz"
+      "1.2.0": {
+        "sha256": "cc89d4cc4ad89de49b9cd7cffcb335c2c57d07f9e4fcff64891a8ea2a238652d",
+        "url": "https://github.com/libre-devops/ansible-role-mde-linux/archive/refs/tags/1.2.0.tar.gz"
       }
     },
     "libre_devops.mde_linux_checks": {
-      "1.0.1": {
-        "sha256": "65449d78566526102e22662f742909e55647c8617a3c2e5bb3e6477ac14763c0",
-        "url": "https://github.com/libre-devops/ansible-role-mde-linux-checks/archive/refs/tags/1.0.1.tar.gz"
+      "1.1.1": {
+        "sha256": "20d4da9b87190a7302d7bd681b44659d195f995ff1c6e0a7764b286cb1a761c2",
+        "url": "https://github.com/libre-devops/ansible-role-mde-linux-checks/archive/refs/tags/1.1.1.tar.gz"
       }
     },
     "libre_devops.puppet_agent": {
@@ -254,9 +254,9 @@
       }
     },
     "libre_devops.python": {
-      "1.0.0": {
-        "sha256": "2498ec1d9321b8e1218f0860a5526df88eea9b4d28c2f45f8abc8ffe92d412ff",
-        "url": "https://github.com/libre-devops/ansible-role-python/archive/refs/tags/1.0.0.tar.gz"
+      "1.1.0": {
+        "sha256": "0c50e06bdd0db3c56d756c0335bbf1b546bf25b49044274041e224cfa9bb4f89",
+        "url": "https://github.com/libre-devops/ansible-role-python/archive/refs/tags/1.1.0.tar.gz"
       }
     },
     "libre_devops.rpm_repo_download": {
@@ -278,15 +278,15 @@
       }
     },
     "libre_devops.standalone_package_installer": {
-      "1.0.0": {
-        "sha256": "facec6c2762faf4d5875c16afae4839c1f91a1072b6e3d6549dad99c991ecdeb",
-        "url": "https://github.com/libre-devops/ansible-role-standalone-package-installer/archive/refs/tags/1.0.0.tar.gz"
+      "1.1.0": {
+        "sha256": "66b8bddef4416ea6079af2f8b735eaa668eda7a16ef474a29b3fc82de066189a",
+        "url": "https://github.com/libre-devops/ansible-role-standalone-package-installer/archive/refs/tags/1.1.0.tar.gz"
       }
     },
     "libre_devops.test_results_report": {
-      "1.0.0": {
-        "sha256": "74c966b1af36a9bec59b61a7eac4e517417d0e25056c5232e97fd85d350fb89b",
-        "url": "https://github.com/libre-devops/ansible-role-test-results-report/archive/refs/tags/1.0.0.tar.gz"
+      "1.0.1": {
+        "sha256": "60fd6d6e25cdc31e816a4fe9099def5851c5c1c7475c288731d2295e1f889481",
+        "url": "https://github.com/libre-devops/ansible-role-test-results-report/archive/refs/tags/1.0.1.tar.gz"
       }
     }
   },
