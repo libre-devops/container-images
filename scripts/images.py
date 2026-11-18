@@ -101,6 +101,11 @@ DOWNLOADS: dict[str, tuple[str, str, str, dict[str, str]]] = {
         {"amd64": "linux-x64", "arm64": "linux-arm64", "amd64-musl": "linux-musl-x64"},
     ),
     "ldo-cli": ("libre-devops/ldo-cli", "v{v}", "libre_devops_helpers-{v}-py3-none-any.whl", {"any": ""}),
+    # Self-contained .NET, with no musl build.
+    "azure-functions-core-tools": (
+        "Azure/azure-functions-core-tools", "{v}", "Azure.Functions.Cli.{a}.{v}.zip",
+        {"amd64": "linux-x64", "arm64": "linux-arm64"},
+    ),
     # GitHub publishes no musl build of the runner.
     "github-runner": ("actions/runner", "v{v}", "actions-runner-linux-{a}-{v}.tar.gz", {"amd64": "x64", "arm64": "arm64"}),
     # Static musl builds, so the same binary serves every base.
@@ -230,6 +235,8 @@ class Entry:
     atop: str | None = None  # another image whose stage this one is built on
     base_stage: str | None = None  # the stage every image stage starts from, if not base
     contents: str | None = None  # this entry's README description, if not the image's
+    tools: tuple[str, ...] = ()  # tools only this entry carries, on top of its image's
+    os_packages: tuple[str, ...] = ()  # and the operating system packages they need
 
     @property
     def key(self) -> str:
@@ -311,6 +318,8 @@ class Config:
                         atop=item.get("atop"),
                         base_stage=item.get("base_stage"),
                         contents=item.get("contents"),
+                        tools=tuple(item.get("tools") or ()),
+                        os_packages=tuple(item.get("os_packages") or ()),
                     )
                 )
         if image and not out:
@@ -355,14 +364,14 @@ class Config:
     def tools_for(self, entry: Entry) -> list[str]:
         """Every tool an image version carries: its own, and those of every image
         it is made of, less any its image leaves out (`without`)."""
-        tools = list(self.common) + list(self.images[entry.image].get("tools") or [])
+        tools = list(self.common) + list(self.images[entry.image].get("tools") or []) + list(entry.tools)
         for c in self.components(entry):
             tools += self.images[c.image].get("tools") or []
         without = set(self.images[entry.image].get("without") or [])
         return [t for t in dict.fromkeys(tools) if t not in without]
 
     def os_packages(self, entry: Entry) -> list[str]:
-        names = list(self.images[entry.image].get("os_packages") or [])
+        names = list(self.images[entry.image].get("os_packages") or []) + list(entry.os_packages)
         for c in self.components(entry):
             names += self.images[c.image].get("os_packages") or []
         return list(dict.fromkeys(names))
@@ -1610,6 +1619,9 @@ def cmd_validate(cfg: Config) -> None:
             for field in ("version", "python"):
                 if field in raw and not isinstance(raw[field], str):
                     problems.append(f"{name}: quote {field} {raw[field]!r}, or YAML reads it as a number")
+            for tool in raw.get("tools") or []:
+                if tool not in cfg.tools:
+                    problems.append(f"{name} {raw['version']}: uses '{tool}', which is not under tools")
         for e in entries:
             if e.atop and (e.atop not in cfg.images or e.atop == name):
                 problems.append(f"{e.id}: atop '{e.atop}' is not another image")

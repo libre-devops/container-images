@@ -103,6 +103,9 @@ tools:
   openssh: 10.6p2
   # renovate: datasource=github-releases depName=libre-devops/ldo-cli extractVersion=^v(?<version>.+)$
   ldo-cli: 0.8.1
+  # In azure-cli's functions flavour.
+  # renovate: datasource=github-releases depName=Azure/azure-functions-core-tools
+  azure-functions-core-tools: 4.16.1
   # In every ansible image: what Molecule's Podman scenarios drive Podman with.
   # renovate: datasource=galaxy-collection depName=containers.podman
   containers-podman: 1.21.2
@@ -196,6 +199,10 @@ ci: [uv, shellcheck, shfmt, hadolint, trivy, cosign, zizmor, actionlint]
 #             The stage every image stage in this entry's build starts from,
 #             instead of base: podman for the -podman flavours, which then have
 #             Podman, set up to run rootless inside a container, under them.
+#   tools, os_packages
+#             Tools (and the operating system packages they need) that only
+#             this entry carries, on top of its image's: the functions flavour
+#             of azure-cli.
 # Each image takes `description`, `contents` (the README description of one
 # entry: {version}, {python}, any tool name and any included image's name,
 # with - as _, are filled in), and optionally `tools`, `os_packages` (logical
@@ -237,6 +244,11 @@ images:
       - { version: "2.92.0", python: "3.12", base: python-3.12, latest: true }
       # renovate: datasource=pypi depName=azure-cli
       - { version: "2.92.0", python: "3.12", base: python-3.12, flavour: podman, base_stage: podman, latest: true }
+      # With Azure Functions Core Tools (func): about 600 MB more, so a flavour
+      # of its own. .NET, which func runs on, needs ICU, OpenSSL, zlib,
+      # libstdc++ and Kerberos.
+      # renovate: datasource=pypi depName=azure-cli
+      - { version: "2.92.0", python: "3.12", base: python-3.12, flavour: functions, latest: true, tools: [azure-functions-core-tools], os_packages: [icu, openssl, zlib, libstdc++, krb5], contents: "Azure CLI {version} on Python {python}, ldo-cli {ldo_cli}, and Azure Functions Core Tools {azure_functions_core_tools} (func)" }
       # Long-lived line for networks whose TLS inspection fails the stricter
       # certificate checks in Python 3.13 and later. Not bumped by Renovate.
       - { version: "2.72.0", python: "3.12", base: python-3.12 }

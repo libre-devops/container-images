@@ -319,6 +319,18 @@
         }
       }
     },
+    "azure-functions-core-tools": {
+      "4.16.1": {
+        "amd64": {
+          "sha256": "3fac67f50f3a25dff1dcb40514089726a93cb260d8d6cb064773961af3be16a6",
+          "url": "https://github.com/Azure/azure-functions-core-tools/releases/download/4.16.1/Azure.Functions.Cli.linux-x64.4.16.1.zip"
+        },
+        "arm64": {
+          "sha256": "3075a7cfc5dd9cf525d2d3b50e42f1d2727a74bacac7767c8d4471e92f192a6f",
+          "url": "https://github.com/Azure/azure-functions-core-tools/releases/download/4.16.1/Azure.Functions.Cli.linux-arm64.4.16.1.zip"
+        }
+      }
+    },
     "azure-pipelines-agent": {
       "5.282.0": {
         "amd64": {

@@ -46,6 +46,7 @@ ARG SHELLCHECK_ASSET
 ARG JQ_ASSET
 ARG UV_ASSET=""
 ARG LDO_CLI_ASSET=""
+ARG AZURE_FUNCTIONS_CORE_TOOLS_ASSET=""
 ARG POWERSHELL_ASSET=""
 ARG AZURE_AZCOLLECTION_ASSET=""
 ARG CONTAINERS_PODMAN_ASSET=""
@@ -58,7 +59,7 @@ ARG AZURE_PIPELINES_AGENT_ASSET=""
 ARG GITHUB_RUNNER_ASSET=""
 ARG GITLAB_RUNNER_ASSET=""
 RUN --mount=type=bind,source=images,target=/src \
-    sh /src/common/os-packages.sh ca-certificates curl tar gzip xz \
+    sh /src/common/os-packages.sh ca-certificates curl tar gzip xz unzip \
     && sh /src/common/fetch-all.sh /fetched
 
 FROM ${BASE_IMAGE} AS go
@@ -183,6 +184,9 @@ USER 0
 ARG PYTHON_MINOR
 ARG AZURE_CLI_LOCK
 ARG LDO_CLI_LOCK=""
+# Azure Functions Core Tools, in the functions flavour only: the other builds
+# fetch nothing for it, so this copies nothing.
+COPY --from=fetch /fetched/azure-functions-core-tools/ /
 # uv builds the image but is not shipped in it. With no LDO_CLI_LOCK (an image
 # that does without ldo-cli), only the Azure CLI is installed.
 RUN --mount=type=bind,source=images,target=/src \
@@ -193,6 +197,7 @@ RUN --mount=type=bind,source=images,target=/src \
     && sh /src/common/finalise.sh
 ENV HOME=/home/app \
     AZURE_CORE_COLLECT_TELEMETRY=no \
+    FUNCTIONS_CORE_TOOLS_TELEMETRY_OPTOUT=1 \
     PYTHONUNBUFFERED=1
 USER 10001:10001
 WORKDIR /work

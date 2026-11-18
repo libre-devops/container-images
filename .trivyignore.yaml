@@ -40,6 +40,31 @@ vulnerabilities:
     paths: ["usr/local/bin/gitlab-runner"]
     statement: GitLab Runner 19.5.3 is built with golang.org/x/net 0.58.0; fixed in 0.60.0, awaiting a runner release. Accepted risk, time-boxed.
     expired_at: 2026-12-13
+  # Azure Functions Core Tools' PowerShell language worker (azure-cli's
+  # functions flavour) bundles its own .NET libraries, which only Microsoft
+  # can update, in a Core Tools release. These findings apply. They were
+  # accepted by the maintainer on 2026-11-16, on the same terms as the
+  # agents' above. Paths are limited to the worker's own manifests.
+  - id: CVE-2026-84008
+    paths: ["opt/azure-functions-core-tools/workers/powershell/*/*.deps.json"]
+    statement: Azure Functions Core Tools 4.16.1's PowerShell workers bundle System.Security.Cryptography.Pkcs 8.0.1 and 10.0.10; fixed in 8.0.2 and 10.0.13, awaiting a Core Tools release. Accepted risk, time-boxed.
+    expired_at: 2026-12-16
+  - id: CVE-2026-96222
+    paths: ["opt/azure-functions-core-tools/workers/powershell/*/*.deps.json"]
+    statement: Azure Functions Core Tools 4.16.1's PowerShell 7.4 worker bundles System.Security.Cryptography.Xml 8.0.4; fixed in 8.0.5, awaiting a Core Tools release. Accepted risk, time-boxed.
+    expired_at: 2026-12-16
+  - id: CVE-2026-96958
+    paths: ["opt/azure-functions-core-tools/workers/powershell/*/*.deps.json"]
+    statement: Azure Functions Core Tools 4.16.1's PowerShell workers bundle System.Security.Cryptography.Xml 8.0.4 and 10.0.10; fixed in 8.0.5 and 10.0.13, awaiting a Core Tools release. Accepted risk, time-boxed.
+    expired_at: 2026-12-16
+  - id: CVE-2026-96959
+    paths: ["opt/azure-functions-core-tools/workers/powershell/*/*.deps.json"]
+    statement: Azure Functions Core Tools 4.16.1's PowerShell workers bundle System.Security.Cryptography.Xml 8.0.4 and 10.0.10; fixed in 8.0.5 and 10.0.13, awaiting a Core Tools release. Accepted risk, time-boxed.
+    expired_at: 2026-12-16
+  - id: CVE-2026-96960
+    paths: ["opt/azure-functions-core-tools/workers/powershell/*/*.deps.json"]
+    statement: Azure Functions Core Tools 4.16.1's PowerShell workers bundle System.Security.Cryptography.Xml 8.0.4 and 10.0.10; fixed in 8.0.5 and 10.0.13, awaiting a Core Tools release. Accepted risk, time-boxed.
+    expired_at: 2026-12-16
 
 # Kubernetes examples for Podman in a container (examples/kubernetes): not
 # part of any image, and these settings are what running Podman in a pod
