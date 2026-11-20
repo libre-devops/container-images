@@ -66,16 +66,6 @@
   },
   "providers": {
     "azure/azapi": {
-      "2.11.0": {
-        "amd64": {
-          "sha256": "8cf0b1b1e064ea0bc4c785e68f2b239a57ffece529b21a60b415b9d310a610a9",
-          "url": "https://github.com/Azure/terraform-provider-azapi/releases/download/v2.11.0/terraform-provider-azapi_2.11.0_linux_amd64.zip"
-        },
-        "arm64": {
-          "sha256": "05ae9abf23abf003229e9e04734fce2b881974b0df4313083a890d9f67b1fc35",
-          "url": "https://github.com/Azure/terraform-provider-azapi/releases/download/v2.11.0/terraform-provider-azapi_2.11.0_linux_arm64.zip"
-        }
-      },
       "2.12.0": {
         "amd64": {
           "sha256": "71402acfa1ad35788a5d1669bdd59040434a45aea990d062dcc41f17163c8e1b",
@@ -94,6 +84,16 @@
         "arm64": {
           "sha256": "e2948388d78d392b7992cc0e76d4f266545ffc8984ba458d7fa6884a5f04f376",
           "url": "https://github.com/Azure/terraform-provider-azapi/releases/download/v2.13.0/terraform-provider-azapi_2.13.0_linux_arm64.zip"
+        }
+      },
+      "2.14.0": {
+        "amd64": {
+          "sha256": "5b29d4767193fd159f537aa210d4d0440eea5b56509ea419ae23d2016e45529d",
+          "url": "https://github.com/Azure/terraform-provider-azapi/releases/download/v2.14.0/terraform-provider-azapi_2.14.0_linux_amd64.zip"
+        },
+        "arm64": {
+          "sha256": "8394cdf5e9a0c2e3a52677329b0d2da3956fadafc0a197b1ad7f67c0c08b72ca",
+          "url": "https://github.com/Azure/terraform-provider-azapi/releases/download/v2.14.0/terraform-provider-azapi_2.14.0_linux_arm64.zip"
         }
       }
     },
