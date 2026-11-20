@@ -1015,36 +1015,36 @@ The newest digest of every version, as of the last release:
 
 | Image | Version | Newest date tag | Digest | Released |
 | --- | --- | --- | --- | --- |
-| `python` | `3.12` | `3.12-20261119` | `sha256:9d81cd299abda35ad683155077be9bb006f411e986dc2ae42ce7d9c592450e77` | 2026-11-19 |
-| `python` | `3.13` | `3.13-20261119` | `sha256:187d4d332633cf8ef52af4a4907b127cd68fa883edfcf4d996ae59ab4f9dff91` | 2026-11-19 |
-| `python` | `3.14` | `3.14-20261119` | `sha256:8957c53316381167271b2cea7f973ff9ef4b0e2bbd2a2f06caa2d1238e4d2fbc` | 2026-11-19 |
-| `python` | `3.15` | `3.15-20261119` | `sha256:e33a5185b9c4d79f4da3bb69d56f34590240d8d5445029ae0175a8adf199ca75` | 2026-11-19 |
-| `podman` | `5` | `5-20261119` | `sha256:187821563ea97e76a0d66a42b7835a2788f43b9350c94d76c329101199f31a13` | 2026-11-19 |
-| `azure-cli` | `2.92.0` | `2.92.0-py3.12-20261119` | `sha256:6b28495ec59c4f2eea707f60eb8b567aafcbe9fae5b39def173b36933ea02864` | 2026-11-19 |
-| `azure-cli` | `2.92.0-podman` | `2.92.0-py3.12-podman-20261119` | `sha256:8704ba1b2180399ab3cd55f8d42ea486ae5eb34f6630d5ff391290529d7a10aa` | 2026-11-19 |
-| `azure-cli` | `2.92.0-functions` | `2.92.0-py3.12-functions-20261119` | `sha256:d3c7a67b26f05cb34eae6ed45466c97479ad8f4596939a5a261c844fb7e50dc9` | 2026-11-19 |
-| `azure-cli` | `2.72.0` | `2.72.0-py3.12-20261119` | `sha256:e8f54e180c7d1a9185bce55e3305c86dc32f8a634fda31bd0df60fbbf9569d0f` | 2026-11-19 |
-| `terraform` | `1.17.2` | `1.17.2-20261119` | `sha256:1112d213ff90a0cc99268d978af6009d65babbbd3a90e100591c1d114e961b05` | 2026-11-19 |
-| `terraform` | `1.17.2-alpine` | `1.17.2-alpine-20261119` | `sha256:fa0e36b7f46099a81599584304774a5220a50b3bbfb74bb1829812d17ed72e47` | 2026-11-19 |
-| `terraform` | `1.17.2-podman` | `1.17.2-podman-20261119` | `sha256:0d139d5f6727d3d3f5a3d37eaeb90334479daf87b8bfddff9ff98b508376d06d` | 2026-11-19 |
-| `ansible` | `2.22.0` | `2.22.0-py3.14-20261119` | `sha256:0107807c3a05f0d768a92ff0959dea299a39dcfb38063bc0e9f5c5a6fda6dde6` | 2026-11-19 |
-| `ansible` | `2.22.0-podman` | `2.22.0-py3.14-podman-20261119` | `sha256:82bebeeea2e4c4c2501abb01613d5e6782656dacb94b2fdc25e6a34779fba9a3` | 2026-11-19 |
-| `ansible` | `2.16.20` | `2.16.20-py3.12-20261119` | `sha256:2df05799fbb47062d17cf0b561186b8057b80142afc554b8afa6d1990455b685` | 2026-11-19 |
-| `ansible-azure` | `4.2.0` | `4.2.0-20261119` | `sha256:b0f0c6c501c9e2f84a2e821a35a80de1e7efcbbca3988da6509d1c79f6bf9608` | 2026-11-19 |
-| `azure-terraform` | `1.17.2` | `1.17.2-20261119` | `sha256:cb5f03dc5b9caa13cd35be7492f2e77b33d7bfc2408893466c6f464a0bddcd32` | 2026-11-19 |
-| `powershell` | `7.6.10` | `7.6.10-20261119` | `sha256:cd54d4d1e110815f643d1b44c90d2037a08277abd3220d0af613c635dd41269f` | 2026-11-19 |
-| `toolbox` | `1` | `1-20261119` | `sha256:d2fd9a52fe5a8da9101b59588d694a3db5a8b361d5cf94cbf3c665c531d80ca5` | 2026-11-19 |
-| `toolbox` | `1-podman` | `1-podman-20261119` | `sha256:698234c2bb393d2609419b7c88b81e05f9b230cc60d6ad99d36bdc31ee074bf2` | 2026-11-19 |
-| `cicd-helper` | `2.21.6` | `2.21.6-py3.12-20261119` | `sha256:6f0e8fb1bd57109da08a8ac752d2c3e24987a2eba17b1911eb90c5970c7044b7` | 2026-11-19 |
-| `azure-pipelines-agent` | `5.282.0` | `5.282.0-20261119` | `sha256:af7432a23b09fa61122bf2ad8dacb70c190fb129ba67a2a3a7510d766714b398` | 2026-11-19 |
-| `azure-pipelines-agent` | `5.282.0-toolbox` | `5.282.0-toolbox-20261119` | `sha256:9cf781bb407d58f105058c032c178f5d4ea87339594acab9019084a3282382e1` | 2026-11-19 |
-| `azure-pipelines-agent` | `5.282.0-toolbox-podman` | `5.282.0-toolbox-podman-20261119` | `sha256:4c3474beb064cebfbb3d5c3a2d38a85cb042413f9a75f8963abef9ec73312a1d` | 2026-11-19 |
-| `github-runner` | `2.338.2` | `2.338.2-20261119` | `sha256:c71e39e944240a900edae630cd651e3929299044a17d64380fbdd0158dd04508` | 2026-11-19 |
-| `github-runner` | `2.338.2-toolbox` | `2.338.2-toolbox-20261119` | `sha256:3c1a79809915e1c0693b6d0b43be89303a02b1140a0f7a733f45f753ee588777` | 2026-11-19 |
-| `github-runner` | `2.338.2-toolbox-podman` | `2.338.2-toolbox-podman-20261119` | `sha256:7890925c08585f0b068d439c0adb34c50686b6545ed008b32fd5d7baceea31ae` | 2026-11-19 |
-| `gitlab-runner` | `19.5.3` | `19.5.3-20261119` | `sha256:2c82d5cc20e1180b1cbd1ed3e826f2f4de40699cbde1ec2636eeb5cb6ebac9ba` | 2026-11-19 |
-| `gitlab-runner` | `19.5.3-toolbox` | `19.5.3-toolbox-20261119` | `sha256:117e861a70cfc9586bbae96884d6623b5c2f38933d4afd1e35f2853cf9ec1cf4` | 2026-11-19 |
-| `gitlab-runner` | `19.5.3-toolbox-podman` | `19.5.3-toolbox-podman-20261119` | `sha256:612c9a2bdccf70efd29e9ea407ac9804b47fcd97e2ff407558159f4506f42cb7` | 2026-11-19 |
+| `python` | `3.12` | `3.12-20261120` | `sha256:e804bfd87c98cc96a5f079ff45d8c6d847c8c0e160379692cdf2d7bfc46694d0` | 2026-11-20 |
+| `python` | `3.13` | `3.13-20261120` | `sha256:da206df1dbcde016cf91df7226a2d942239241e64a3558491abe584673baf7a6` | 2026-11-20 |
+| `python` | `3.14` | `3.14-20261120` | `sha256:15f38d4fe383502daebdaae631ae5a512c6d9be9b7043f5e3677f22ecf309d01` | 2026-11-20 |
+| `python` | `3.15` | `3.15-20261120` | `sha256:857a935a0fadc61b23ff0ef20a4e169cd26961f4460c47a279d5ebc7e32e4869` | 2026-11-20 |
+| `podman` | `5` | `5-20261120` | `sha256:bc2ba69cf645296a29042c04e83d60b691d6afab462e28a4fe80df5def3e3b0b` | 2026-11-20 |
+| `azure-cli` | `2.92.0` | `2.92.0-py3.12-20261120` | `sha256:03e14ecddb9936500c6d9a629ce924334bd34d6ffc81242fdf8a3f50ae7de629` | 2026-11-20 |
+| `azure-cli` | `2.92.0-podman` | `2.92.0-py3.12-podman-20261120` | `sha256:14f2ba503c7e3dd0f8f6ccec558fd8094720c219dac549f25484e8af33dcf124` | 2026-11-20 |
+| `azure-cli` | `2.92.0-functions` | `2.92.0-py3.12-functions-20261120` | `sha256:c26d84aa617c198a92fcb365acbcffa0cbed8420b409f4796aa497c5a80acfb0` | 2026-11-20 |
+| `azure-cli` | `2.72.0` | `2.72.0-py3.12-20261120` | `sha256:22ead65935f155be3882e6a76fd281d72afba0e969a7675e4a46a795507f574f` | 2026-11-20 |
+| `terraform` | `1.17.2` | `1.17.2-20261120` | `sha256:a20998b56e0eb544d85a8b694ccc9d8b55e0825e6a576b2c2737be4c985d20da` | 2026-11-20 |
+| `terraform` | `1.17.2-alpine` | `1.17.2-alpine-20261120` | `sha256:3b0d4af5a381562315844766014d8affc54e8ecb424043e4b18a4b9046136dff` | 2026-11-20 |
+| `terraform` | `1.17.2-podman` | `1.17.2-podman-20261120` | `sha256:7b08196757c8b26316d11b563b5ea01f9960fc37edd6398cf848091ab07faee0` | 2026-11-20 |
+| `ansible` | `2.22.0` | `2.22.0-py3.14-20261120` | `sha256:d9f8191511be0c8fefc57c34b3c026de9177d51b220031fe65068b30faf1a5d2` | 2026-11-20 |
+| `ansible` | `2.22.0-podman` | `2.22.0-py3.14-podman-20261120` | `sha256:67578ed77adda1763e4beb0a2254a686159018475a57bab1001f74798fc6ffad` | 2026-11-20 |
+| `ansible` | `2.16.20` | `2.16.20-py3.12-20261120` | `sha256:27ec74400617d660009b31dae85072d21885551fb1e43dfcdf698c1f05cb5837` | 2026-11-20 |
+| `ansible-azure` | `4.2.0` | `4.2.0-20261120` | `sha256:10906e9ce0b26a8a2b413b9fa033fe4b05a890f28c49aea135037c29aa21c73f` | 2026-11-20 |
+| `azure-terraform` | `1.17.2` | `1.17.2-20261120` | `sha256:067498164195695fb7524425cba234bd78e36ed0853703178e98f4969e983741` | 2026-11-20 |
+| `powershell` | `7.6.10` | `7.6.10-20261120` | `sha256:adf24011028fc191464229d6ff350be9e18404ad22bc1dc46ca5ae76c5e127ae` | 2026-11-20 |
+| `toolbox` | `1` | `1-20261120` | `sha256:75dc20ccbf10c9241425cad593d20d8e49f81bce035dfe87b3b250a1ad463252` | 2026-11-20 |
+| `toolbox` | `1-podman` | `1-podman-20261120` | `sha256:a89c47f63532c098fc4caef8415459eb8faf72068e79e4c0e3e11e39d133afa6` | 2026-11-20 |
+| `cicd-helper` | `2.21.6` | `2.21.6-py3.12-20261120` | `sha256:7b8f82b7d8fb90110c28ed584955436e652c2163fafd36c5c487e41551cddcba` | 2026-11-20 |
+| `azure-pipelines-agent` | `5.282.0` | `5.282.0-20261120` | `sha256:8130205fae7e75cfc37ef3e59cfba4791303df2db515857a522f0ad1b073e40c` | 2026-11-20 |
+| `azure-pipelines-agent` | `5.282.0-toolbox` | `5.282.0-toolbox-20261120` | `sha256:646ba09abfa73e1decf70ae20a3f5af8d6c91b418ad82b0cc7fa9f5ad0f66c23` | 2026-11-20 |
+| `azure-pipelines-agent` | `5.282.0-toolbox-podman` | `5.282.0-toolbox-podman-20261120` | `sha256:19134773df5a0a6366339a6a7668be3a25b862554fbf4fd1bca5d6db072b28f8` | 2026-11-20 |
+| `github-runner` | `2.338.2` | `2.338.2-20261120` | `sha256:52a8aa220689a01d7dc71adb67043b14c51c3b3441836a3d201feab3c6829601` | 2026-11-20 |
+| `github-runner` | `2.338.2-toolbox` | `2.338.2-toolbox-20261120` | `sha256:dcea175f8d01f62fb3d0947206c9b6b70b507508ffa75d5e9199e33f7677497a` | 2026-11-20 |
+| `github-runner` | `2.338.2-toolbox-podman` | `2.338.2-toolbox-podman-20261120` | `sha256:718cfe05b1f1c250c8f720ef3cf64014bafbdad2150abf12972d2616d73fba21` | 2026-11-20 |
+| `gitlab-runner` | `19.5.3` | `19.5.3-20261120` | `sha256:3d9f808129e4e504bb289aec91201516407166a1adefefeeaf24bdfd5f3a4e4c` | 2026-11-20 |
+| `gitlab-runner` | `19.5.3-toolbox` | `19.5.3-toolbox-20261120` | `sha256:becbb9a9164c6cf247fc8cbb8b56b07e5e8bafb916705c1a3af7942349f8ea5f` | 2026-11-20 |
+| `gitlab-runner` | `19.5.3-toolbox-podman` | `19.5.3-toolbox-podman-20261120` | `sha256:f596970c9c56919a55c8c3f02c13c7c893a99dc597717f8eeca168b89b6945ae` | 2026-11-20 |
 
 ## Security and supply chain
 
