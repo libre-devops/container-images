@@ -51,11 +51,11 @@ platforms:
 # rewrites it.
 bases:
   alpine: dhi.io/alpine-base:3.24-alpine3.24-dev@sha256:266554e75cb00f88effe4048ba78b6f628d6a5ca67ac9e9727ae37a4a1299ce5
-  debian: dhi.io/debian-base:trixie-debian13-dev@sha256:a249f094c5e7dee12dee88ad5ad70274cc621dd311a64353bc8876f7c775eb49
-  python-3.12: dhi.io/python:3.12-debian13-dev@sha256:c7090b12d1050252ee964efa9190124c3053a8679bfd7fa33aff9d5123fb673c
-  python-3.13: dhi.io/python:3.13-debian13-dev@sha256:dbe603d026e33548f420346eb3963d3dd385a06148c1913bb5af32218829d4e2
-  python-3.14: dhi.io/python:3.14-debian13-dev@sha256:60dbebd00c5332a2d5984a96f33b76d6e42167095a9db8c49cd0038ac388de77
-  python-3.15: dhi.io/python:3.15-debian13-dev@sha256:98add6f52fc7dca59a55fc0618b6d40266922b0b8482f017c082a3dbe4ab89ab
+  debian: dhi.io/debian-base:trixie-debian13-dev@sha256:ac54666cad73016059945e22a9d460cd0a60d869a8a92a8f5c367517eb778531
+  python-3.12: dhi.io/python:3.12-debian13-dev@sha256:fcf859cfc756541f139b1d14951d838c4d119fece09734f12968ddf94801f8ad
+  python-3.13: dhi.io/python:3.13-debian13-dev@sha256:754859ea021c41e7eca2e40401879e1cd4c6bcd90a9446e499585fc79f5b7d34
+  python-3.14: dhi.io/python:3.14-debian13-dev@sha256:331fffd6ff7fcf9bf5f7dbde8d48fad634375baa739d1db23f65e0ec83bcd198
+  python-3.15: dhi.io/python:3.15-debian13-dev@sha256:3ba5300d40d7b20ed83d4968a66dc1e92d3c53bc86c5305eec3a08cf85165ee3
 
 # Other bases that every pull request builds and smoke tests the latest
 # version of each image on, so that changing distribution stays a one-line
@@ -64,7 +64,7 @@ portability:
   alpine: dhi.io/alpine-base:3.24-alpine3.24-dev@sha256:266554e75cb00f88effe4048ba78b6f628d6a5ca67ac9e9727ae37a4a1299ce5
   rhel: registry.access.redhat.com/ubi10/ubi:10.1@sha256:15f0a6e2b448ac7aa24425c9ab541e6402dc32b782844a285ccaeffb1c938fe1
   rhel-minimal: registry.access.redhat.com/ubi10/ubi-minimal:10.2@sha256:f0c7b9ae9914fcf183e7c36fc46864903c2d2caf3af327421913ae54b3d29e94
-  wolfi: cgr.dev/chainguard/wolfi-base:latest@sha256:71f52fd289650f1d021d60ba11235550b1b5ce124f3797bd254ca70c4cef39f9
+  wolfi: cgr.dev/chainguard/wolfi-base:latest@sha256:be019c1c74fe69204a42c4e10bc4d886a49bf5403ffa74374ef7baa408fc9a26
 
 # Tools, by exact version. The Go tools (shfmt, tenv, TFLint, terraform-docs,
 # Conftest) are built from source with this Go, never downloaded as binaries,
@@ -147,7 +147,7 @@ tools:
 # verify against the key scripts/images.py holds for its namespace.
 terraform_providers:
   hashicorp/azurerm: ["5.14.0", "5.13.0", "5.12.0"]
-  azure/azapi: ["2.13.0", "2.12.0", "2.11.0"]
+  azure/azapi: ["2.14.0", "2.13.0", "2.12.0"]
   microsoft/msgraph: ["0.6.0", "0.5.0", "0.4.0"]
 
 # Galaxy roles that cicd-helper installs for every user: every role in each
