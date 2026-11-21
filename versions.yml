@@ -51,11 +51,11 @@ platforms:
 # rewrites it.
 bases:
   alpine: dhi.io/alpine-base:3.24-alpine3.24-dev@sha256:266554e75cb00f88effe4048ba78b6f628d6a5ca67ac9e9727ae37a4a1299ce5
-  debian: dhi.io/debian-base:trixie-debian13-dev@sha256:ac54666cad73016059945e22a9d460cd0a60d869a8a92a8f5c367517eb778531
-  python-3.12: dhi.io/python:3.12-debian13-dev@sha256:fcf859cfc756541f139b1d14951d838c4d119fece09734f12968ddf94801f8ad
-  python-3.13: dhi.io/python:3.13-debian13-dev@sha256:754859ea021c41e7eca2e40401879e1cd4c6bcd90a9446e499585fc79f5b7d34
-  python-3.14: dhi.io/python:3.14-debian13-dev@sha256:331fffd6ff7fcf9bf5f7dbde8d48fad634375baa739d1db23f65e0ec83bcd198
-  python-3.15: dhi.io/python:3.15-debian13-dev@sha256:3ba5300d40d7b20ed83d4968a66dc1e92d3c53bc86c5305eec3a08cf85165ee3
+  debian: dhi.io/debian-base:trixie-debian13-dev@sha256:1aa0a2307eea88ae00d07c7b3c8e804187ee272ccc89cde7b51667b3b065fb1d
+  python-3.12: dhi.io/python:3.12-debian13-dev@sha256:924db6bb359c5d1f6d6aff871470a4b6ccfa5bf0266d5a40fe6257c9a5f4176e
+  python-3.13: dhi.io/python:3.13-debian13-dev@sha256:02e72cc2c83c22c06fcb4cbe23c54edb339e248bee4774ac640fabac635529a6
+  python-3.14: dhi.io/python:3.14-debian13-dev@sha256:e84d616360a8ca598446289cadeeeaba36aa7d6e5d83878923e0c6123b268b0f
+  python-3.15: dhi.io/python:3.15-debian13-dev@sha256:ed4eaeaff74b56287de99ce20dad66192444da7b0924da7c91cf5139a93e10cb
 
 # Other bases that every pull request builds and smoke tests the latest
 # version of each image on, so that changing distribution stays a one-line
