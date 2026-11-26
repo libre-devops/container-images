@@ -51,11 +51,11 @@ platforms:
 # rewrites it.
 bases:
   alpine: dhi.io/alpine-base:3.24-alpine3.24-dev@sha256:7e00fc0f6f9f84303dc2657aac557bdefe9877a66c388c0521c5794d51056efa
-  debian: dhi.io/debian-base:trixie-debian13-dev@sha256:88a5530e030acdf99fa522d3b5239fd49f7b8612c46739d19a95b1935da42a61
-  python-3.12: dhi.io/python:3.12-debian13-dev@sha256:20533ed9152abc3ed79289bebb4e0c0f6dc7b87b1a691eef804d804756eef8b0
-  python-3.13: dhi.io/python:3.13-debian13-dev@sha256:bb47b3c392a9f3a13beaee20bbeba0e6b44cae73debce238a27b428f20ee515f
-  python-3.14: dhi.io/python:3.14-debian13-dev@sha256:bc56234775ad310962009c99d2f2545dfc69a16549fefe8f2708d5ad680c5a16
-  python-3.15: dhi.io/python:3.15-debian13-dev@sha256:281b99000717552218659ee210bd5432330c8e6d679935f5458530cb89b9c10a
+  debian: dhi.io/debian-base:trixie-debian13-dev@sha256:120051dda16c2611454d2c54a0959f23f80c32493d0e528a5d1348bca82dfbc8
+  python-3.12: dhi.io/python:3.12-debian13-dev@sha256:9bc6cea586bc89e9bc6719e2d0b8673b1eed3bdb696c15c6cd3d0a2d1cbaff72
+  python-3.13: dhi.io/python:3.13-debian13-dev@sha256:2b464827de5b5243f2fc9d5c37cbf45566744252b1c399e9ded873caba06433a
+  python-3.14: dhi.io/python:3.14-debian13-dev@sha256:405f74fad5143e4aedbcadf79acd7662f4613088beea3d3a08f103e478b96ade
+  python-3.15: dhi.io/python:3.15-debian13-dev@sha256:a1069444b00f18a15f0088a7f6c33ed6070d7f2593919130892b22c5a4f124b7
 
 # Other bases that every pull request builds and smoke tests the latest
 # version of each image on, so that changing distribution stays a one-line
@@ -64,7 +64,7 @@ portability:
   alpine: dhi.io/alpine-base:3.24-alpine3.24-dev@sha256:7e00fc0f6f9f84303dc2657aac557bdefe9877a66c388c0521c5794d51056efa
   rhel: registry.access.redhat.com/ubi10/ubi:10.1@sha256:15f0a6e2b448ac7aa24425c9ab541e6402dc32b782844a285ccaeffb1c938fe1
   rhel-minimal: registry.access.redhat.com/ubi10/ubi-minimal:10.2@sha256:f0c7b9ae9914fcf183e7c36fc46864903c2d2caf3af327421913ae54b3d29e94
-  wolfi: cgr.dev/chainguard/wolfi-base:latest@sha256:28c39be5a5e1e9b85081c10740e8495f6518a865b23bc6a486637c4b21e74b43
+  wolfi: cgr.dev/chainguard/wolfi-base:latest@sha256:c902a861151182e4ce2de29b8632ba3f7d75b68c35880580f16e353819e524d3
 
 # Tools, by exact version. The Go tools (shfmt, tenv, TFLint, terraform-docs,
 # Conftest) are built from source with this Go, never downloaded as binaries,
