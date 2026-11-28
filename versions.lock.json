@@ -24,28 +24,19 @@
       }
     },
     "tenv": {
-      "4.15.1": {
+      "4.16.9": {
         "module": "github.com/tofuutils/tenv/v4",
         "overrides": {
           "golang.org/x/crypto": "v0.59.0",
           "golang.org/x/mod": "v0.40.0",
-          "golang.org/x/net": "v0.62.0",
-          "golang.org/x/sys": "v0.44.0",
-          "golang.org/x/text": "v0.41.0"
+          "golang.org/x/net": "v0.62.0"
         }
       }
     },
     "terraform-docs": {
-      "0.24.0": {
+      "0.25.1": {
         "module": "github.com/terraform-docs/terraform-docs",
-        "overrides": {
-          "golang.org/x/crypto": "v0.59.0",
-          "golang.org/x/mod": "v0.40.0",
-          "golang.org/x/net": "v0.62.0",
-          "golang.org/x/sys": "v0.44.0",
-          "golang.org/x/text": "v0.41.0",
-          "google.golang.org/grpc": "v1.83.2"
-        }
+        "overrides": {}
       }
     },
     "tflint": {
@@ -193,11 +184,11 @@
       "python": "3.12",
       "requirement": "azure-cli==2.72.0\npip-system-certs"
     },
-    "azure-cli-2.92.0-py3.12": {
-      "file": "images/locks/azure-cli-2.92.0-py3.12.txt",
+    "azure-cli-2.93.0-py3.12": {
+      "file": "images/locks/azure-cli-2.93.0-py3.12.txt",
       "overrides": {},
       "python": "3.12",
-      "requirement": "azure-cli==2.92.0\npip-system-certs"
+      "requirement": "azure-cli==2.93.0\npip-system-certs"
     },
     "cicd-helper-2.21.6-py3.12": {
       "file": "images/locks/cicd-helper-2.21.6-py3.12.txt",
@@ -322,34 +313,34 @@
       }
     },
     "azure-functions-core-tools": {
-      "4.16.1": {
+      "4.17.0": {
         "amd64": {
-          "sha256": "3fac67f50f3a25dff1dcb40514089726a93cb260d8d6cb064773961af3be16a6",
-          "url": "https://github.com/Azure/azure-functions-core-tools/releases/download/4.16.1/Azure.Functions.Cli.linux-x64.4.16.1.zip"
+          "sha256": "39a83314502804bcfb70b5a9f280ae9a1afe7fe6a6c33386a05087a2c424ecd3",
+          "url": "https://github.com/Azure/azure-functions-core-tools/releases/download/4.17.0/Azure.Functions.Cli.linux-x64.4.17.0.zip"
         },
         "arm64": {
-          "sha256": "3075a7cfc5dd9cf525d2d3b50e42f1d2727a74bacac7767c8d4471e92f192a6f",
-          "url": "https://github.com/Azure/azure-functions-core-tools/releases/download/4.16.1/Azure.Functions.Cli.linux-arm64.4.16.1.zip"
+          "sha256": "5cac628fc65beabf8bce9119183bccb0aa5808294f596a9b7cbc839e2e68bfe6",
+          "url": "https://github.com/Azure/azure-functions-core-tools/releases/download/4.17.0/Azure.Functions.Cli.linux-arm64.4.17.0.zip"
         }
       }
     },
     "azure-pipelines-agent": {
-      "5.282.0": {
+      "5.283.0": {
         "amd64": {
-          "sha256": "d7a8f9cc0241dbd2d1b26b7ee225ca518fd07e62176aa04668ef1a90a9e41188",
-          "url": "https://download.agent.dev.azure.com/agent/5.282.0/vsts-agent-linux-x64-5.282.0.tar.gz"
+          "sha256": "2316fd12fb8743a72a6ff68e5bf5a1b28dec7e155806818196c18900c05c4e03",
+          "url": "https://download.agent.dev.azure.com/agent/5.283.0/vsts-agent-linux-x64-5.283.0.tar.gz"
         },
         "amd64-musl": {
-          "sha256": "e92eec1cb8b131a84171e58767e82009f70ecd4ff619d561ed965fbe7904d465",
-          "url": "https://download.agent.dev.azure.com/agent/5.282.0/vsts-agent-linux-musl-x64-5.282.0.tar.gz"
+          "sha256": "8d11ba975a8967904b1d47f3debbc37258b26e10437ba890d6315d2d9719dcb4",
+          "url": "https://download.agent.dev.azure.com/agent/5.283.0/vsts-agent-linux-musl-x64-5.283.0.tar.gz"
         },
         "arm64": {
-          "sha256": "aafb00197384cfb9923e8c969205991d3a5b88d84b3be39257ebe8e5e89b47a8",
-          "url": "https://download.agent.dev.azure.com/agent/5.282.0/vsts-agent-linux-arm64-5.282.0.tar.gz"
+          "sha256": "dcefb99c2f2e6dfa55f6ac4efecf26698dc56d16d9997dbc08571793872baf0d",
+          "url": "https://download.agent.dev.azure.com/agent/5.283.0/vsts-agent-linux-arm64-5.283.0.tar.gz"
         },
         "arm64-musl": {
-          "sha256": "302f3ed83a189f6e0d6fe41a1d98d09a51c942cebb18d15ac7f7d7952055668c",
-          "url": "https://download.agent.dev.azure.com/agent/5.282.0/vsts-agent-linux-musl-arm64-5.282.0.tar.gz"
+          "sha256": "baa657fd118ee0300666b172de7a5e86799571bea32b616687616ddc8c3d6ff8",
+          "url": "https://download.agent.dev.azure.com/agent/5.283.0/vsts-agent-linux-musl-arm64-5.283.0.tar.gz"
         }
       }
     },
@@ -370,14 +361,14 @@
       }
     },
     "cosign": {
-      "3.1.4": {
+      "3.1.5": {
         "amd64": {
-          "sha256": "424e2c97d0b45fd7a6b608a87f090f35633f4c23ece5f092d48bba11aaf4bbfa",
-          "url": "https://github.com/sigstore/cosign/releases/download/v3.1.4/cosign-linux-amd64"
+          "sha256": "912502def4baf810eaf36b210a4f51e1da214f9f6d664e2a9a2154cfc67ee0d6",
+          "url": "https://github.com/sigstore/cosign/releases/download/v3.1.5/cosign-linux-amd64"
         },
         "arm64": {
-          "sha256": "ade83b7aac62e131cacfe96d958948b2150cc9efec46a570a2649b8e27dedad2",
-          "url": "https://github.com/sigstore/cosign/releases/download/v3.1.4/cosign-linux-arm64"
+          "sha256": "516893301e9ec0f2594edfcf8f943ec3b3ba96f3aad2b507eff2b71e644e5fca",
+          "url": "https://github.com/sigstore/cosign/releases/download/v3.1.5/cosign-linux-arm64"
         }
       }
     },
@@ -394,14 +385,14 @@
       }
     },
     "gitlab-runner": {
-      "19.5.3": {
+      "19.6.1": {
         "amd64": {
-          "sha256": "cd586a217b0ba4d339b3f3d645b84f8f5e1cc711e73148c30a3eec0f8c78378b",
-          "url": "https://gitlab-runner-downloads.s3.amazonaws.com/v19.5.3/binaries/gitlab-runner-linux-amd64"
+          "sha256": "9a2c76ff287ce55466fdbc2590fea700ac822515556c2fc6fbda8749eefe2fc0",
+          "url": "https://gitlab-runner-downloads.s3.amazonaws.com/v19.6.1/binaries/gitlab-runner-linux-amd64"
         },
         "arm64": {
-          "sha256": "a03646eb5166a6035303d7bd1b3f8f76f55461cc7f1233bf8203539c7d7e8697",
-          "url": "https://gitlab-runner-downloads.s3.amazonaws.com/v19.5.3/binaries/gitlab-runner-linux-arm64"
+          "sha256": "88b5176b508414d8f4c62b9f121b99eae4ea817c7aa564d6767305262c896367",
+          "url": "https://gitlab-runner-downloads.s3.amazonaws.com/v19.6.1/binaries/gitlab-runner-linux-arm64"
         }
       }
     },
@@ -530,34 +521,34 @@
       }
     },
     "uv": {
-      "0.13.7": {
+      "0.13.10": {
         "amd64": {
-          "sha256": "c5221ff41b7892bfc223543883600125f6a47fe845093e0f5bdff4f359196d83",
-          "url": "https://github.com/astral-sh/uv/releases/download/0.13.7/uv-x86_64-unknown-linux-gnu.tar.gz"
+          "sha256": "bf65ac1a0af10f92c522d91ac096c7c0a39657647b155577e7836c2cbbb4526c",
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.10/uv-x86_64-unknown-linux-gnu.tar.gz"
         },
         "amd64-musl": {
-          "sha256": "287491da03f2a785c70fa75b13e1f849918c2f2b5415fe84876b8214eeb792f9",
-          "url": "https://github.com/astral-sh/uv/releases/download/0.13.7/uv-x86_64-unknown-linux-musl.tar.gz"
+          "sha256": "5597970380083a340b7983af05a84824b4db1c62b7059c796935b7fd6dc95fd2",
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.10/uv-x86_64-unknown-linux-musl.tar.gz"
         },
         "arm64": {
-          "sha256": "71279f8d3c67241e807b9d8db872d1bf541579fb9f08b7d1eb1682196d1e57dc",
-          "url": "https://github.com/astral-sh/uv/releases/download/0.13.7/uv-aarch64-unknown-linux-gnu.tar.gz"
+          "sha256": "14590f644805a6234ffe071154340669e38137f38e60aa9629690119704107d2",
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.10/uv-aarch64-unknown-linux-gnu.tar.gz"
         },
         "arm64-musl": {
-          "sha256": "2d3ec076a0c4c0e8250bb6418c44080828b544f1a3be0b6e46adf9fb6923de45",
-          "url": "https://github.com/astral-sh/uv/releases/download/0.13.7/uv-aarch64-unknown-linux-musl.tar.gz"
+          "sha256": "68174084fe40b6300361c5b2038066120dc62c92920c22a0f31f6fc74b066b57",
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.10/uv-aarch64-unknown-linux-musl.tar.gz"
         }
       }
     },
     "zizmor": {
-      "1.32.0": {
+      "1.33.1": {
         "amd64": {
-          "sha256": "bb110cc765eca9cd7efb2e284a956be5974c60027b0970f16397d86208a9957b",
-          "url": "https://github.com/zizmorcore/zizmor/releases/download/v1.32.0/zizmor-x86_64-unknown-linux-gnu.tar.gz"
+          "sha256": "3e6a301c7a820a2501915f5a9de8c0486da82bdec7965f068477538a98743d43",
+          "url": "https://github.com/zizmorcore/zizmor/releases/download/v1.33.1/zizmor-x86_64-unknown-linux-gnu.tar.gz"
         },
         "arm64": {
-          "sha256": "cb152b207f815116d7fa1c1ee4614f61578803351395052908095e79adfd9fd0",
-          "url": "https://github.com/zizmorcore/zizmor/releases/download/v1.32.0/zizmor-aarch64-unknown-linux-gnu.tar.gz"
+          "sha256": "aa487c792a7cbbe86e4f8dccd3b66de33b3b51813c090aaa0842d7ea08a3fc35",
+          "url": "https://github.com/zizmorcore/zizmor/releases/download/v1.33.1/zizmor-aarch64-unknown-linux-gnu.tar.gz"
         }
       }
     }
