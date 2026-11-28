@@ -80,13 +80,13 @@ tools:
   # renovate: datasource=github-releases depName=jqlang/jq extractVersion=^jq-(?<version>.+)$
   jq: 1.8.2
   # renovate: datasource=github-releases depName=astral-sh/uv
-  uv: 0.13.7
+  uv: 0.13.10
   # renovate: datasource=github-releases depName=tofuutils/tenv extractVersion=^v(?<version>.+)$
-  tenv: 4.15.1
+  tenv: 4.16.9
   # renovate: datasource=github-releases depName=terraform-linters/tflint extractVersion=^v(?<version>.+)$
   tflint: 0.66.0
   # renovate: datasource=github-releases depName=terraform-docs/terraform-docs extractVersion=^v(?<version>.+)$
-  terraform-docs: 0.24.0
+  terraform-docs: 0.25.1
   # renovate: datasource=github-releases depName=open-policy-agent/conftest extractVersion=^v(?<version>.+)$
   conftest: 0.71.1
   # renovate: datasource=github-releases depName=mikefarah/yq extractVersion=^v(?<version>.+)$
@@ -105,7 +105,7 @@ tools:
   ldo-cli: 0.8.1
   # In azure-cli's functions flavour.
   # renovate: datasource=github-releases depName=Azure/azure-functions-core-tools
-  azure-functions-core-tools: 4.16.1
+  azure-functions-core-tools: 4.17.0
   # In every ansible image: what Molecule's Podman scenarios drive Podman with.
   # renovate: datasource=galaxy-collection depName=containers.podman
   containers-podman: 1.21.2
@@ -133,9 +133,9 @@ tools:
   # renovate: datasource=github-releases depName=hadolint/hadolint extractVersion=^v(?<version>.+)$
   hadolint: 2.15.1
   # renovate: datasource=github-releases depName=sigstore/cosign extractVersion=^v(?<version>.+)$
-  cosign: 3.1.4
+  cosign: 3.1.5
   # renovate: datasource=github-releases depName=zizmorcore/zizmor extractVersion=^v(?<version>.+)$
-  zizmor: 1.32.0
+  zizmor: 1.33.1
   # renovate: datasource=github-releases depName=rhysd/actionlint extractVersion=^v(?<version>.+)$
   actionlint: 1.7.12
 
@@ -241,14 +241,14 @@ images:
     tools: [uv, ldo-cli]
     versions:
       # renovate: datasource=pypi depName=azure-cli
-      - { version: "2.92.0", python: "3.12", base: python-3.12, latest: true }
+      - { version: "2.93.0", python: "3.12", base: python-3.12, latest: true }
       # renovate: datasource=pypi depName=azure-cli
-      - { version: "2.92.0", python: "3.12", base: python-3.12, flavour: podman, base_stage: podman, latest: true }
+      - { version: "2.93.0", python: "3.12", base: python-3.12, flavour: podman, base_stage: podman, latest: true }
       # With Azure Functions Core Tools (func): about 600 MB more, so a flavour
       # of its own. .NET, which func runs on, needs ICU, OpenSSL, zlib,
       # libstdc++ and Kerberos.
       # renovate: datasource=pypi depName=azure-cli
-      - { version: "2.92.0", python: "3.12", base: python-3.12, flavour: functions, latest: true, tools: [azure-functions-core-tools], os_packages: [icu, openssl, zlib, libstdc++, krb5], contents: "Azure CLI {version} on Python {python}, ldo-cli {ldo_cli}, and Azure Functions Core Tools {azure_functions_core_tools} (func)" }
+      - { version: "2.93.0", python: "3.12", base: python-3.12, flavour: functions, latest: true, tools: [azure-functions-core-tools], os_packages: [icu, openssl, zlib, libstdc++, krb5], contents: "Azure CLI {version} on Python {python}, ldo-cli {ldo_cli}, and Azure Functions Core Tools {azure_functions_core_tools} (func)" }
       # Long-lived line for networks whose TLS inspection fails the stricter
       # certificate checks in Python 3.13 and later. Not bumped by Renovate.
       - { version: "2.72.0", python: "3.12", base: python-3.12 }
@@ -359,11 +359,11 @@ images:
     os_packages: [icu, openssl, zlib, libstdc++, krb5, tar, gzip]
     versions:
       # renovate: datasource=github-releases depName=microsoft/azure-pipelines-agent extractVersion=^v(?<version>.+)$
-      - { version: "5.282.0", base: debian, latest: true, moving: [major] }
+      - { version: "5.283.0", base: debian, latest: true, moving: [major] }
       # renovate: datasource=github-releases depName=microsoft/azure-pipelines-agent extractVersion=^v(?<version>.+)$
-      - { version: "5.282.0", base: python-3.12, flavour: toolbox, atop: toolbox, latest: true, moving: [major], contents: "Azure Pipelines agent {version} with everything in toolbox {toolbox}: Azure CLI {azure_cli}, Terraform {terraform}, PowerShell {powershell} with Az and Microsoft.Graph, Python {python}" }
+      - { version: "5.283.0", base: python-3.12, flavour: toolbox, atop: toolbox, latest: true, moving: [major], contents: "Azure Pipelines agent {version} with everything in toolbox {toolbox}: Azure CLI {azure_cli}, Terraform {terraform}, PowerShell {powershell} with Az and Microsoft.Graph, Python {python}" }
       # renovate: datasource=github-releases depName=microsoft/azure-pipelines-agent extractVersion=^v(?<version>.+)$
-      - { version: "5.282.0", base: python-3.12, flavour: toolbox-podman, atop: toolbox, base_stage: podman, latest: true, moving: [major], contents: "Azure Pipelines agent {version} with everything in toolbox {toolbox} and Podman {podman}, which jobs can use to build and run images (rootless; see the README for the outer container's flags)" }
+      - { version: "5.283.0", base: python-3.12, flavour: toolbox-podman, atop: toolbox, base_stage: podman, latest: true, moving: [major], contents: "Azure Pipelines agent {version} with everything in toolbox {toolbox} and Podman {podman}, which jobs can use to build and run images (rootless; see the README for the outer container's flags)" }
 
   github-runner:
     description: A self-hosted GitHub Actions runner that registers itself from environment variables
@@ -388,8 +388,8 @@ images:
     download: gitlab-runner
     versions:
       # renovate: datasource=gitlab-releases depName=gitlab-org/gitlab-runner extractVersion=^v(?<version>.+)$
-      - { version: "19.5.3", base: debian, latest: true, moving: [major] }
+      - { version: "19.6.1", base: debian, latest: true, moving: [major] }
       # renovate: datasource=gitlab-releases depName=gitlab-org/gitlab-runner extractVersion=^v(?<version>.+)$
-      - { version: "19.5.3", base: python-3.12, flavour: toolbox, atop: toolbox, latest: true, moving: [major], contents: "GitLab Runner {version} (shell executor) with everything in toolbox {toolbox}: Azure CLI {azure_cli}, Terraform {terraform}, PowerShell {powershell} with Az and Microsoft.Graph, Python {python}" }
+      - { version: "19.6.1", base: python-3.12, flavour: toolbox, atop: toolbox, latest: true, moving: [major], contents: "GitLab Runner {version} (shell executor) with everything in toolbox {toolbox}: Azure CLI {azure_cli}, Terraform {terraform}, PowerShell {powershell} with Az and Microsoft.Graph, Python {python}" }
       # renovate: datasource=gitlab-releases depName=gitlab-org/gitlab-runner extractVersion=^v(?<version>.+)$
-      - { version: "19.5.3", base: python-3.12, flavour: toolbox-podman, atop: toolbox, base_stage: podman, latest: true, moving: [major], contents: "GitLab Runner {version} (shell executor) with everything in toolbox {toolbox} and Podman {podman}, which jobs can use to build and run images (rootless; see the README for the outer container's flags)" }
+      - { version: "19.6.1", base: python-3.12, flavour: toolbox-podman, atop: toolbox, base_stage: podman, latest: true, moving: [major], contents: "GitLab Runner {version} (shell executor) with everything in toolbox {toolbox} and Podman {podman}, which jobs can use to build and run images (rootless; see the README for the outer container's flags)" }
